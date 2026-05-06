@@ -322,10 +322,48 @@
     </div>
   </div>
 
-  <script>
-    // Semua kode dijalankan setelah DOM siap
-    document.addEventListener('DOMContentLoaded', function () {
+<script>
+  // 1. FUNGSI GLOBAL (Bisa diakses oleh atribut onclick di HTML)
+  async function handleLogin() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
 
+    if (!username || !password) {
+      showError('Username dan password wajib diisi');
+      return;
+    }
+
+    setLoading(true);
+
+    const result = await Auth.login(username, password);
+
+    setLoading(false);
+
+    if (result.success) {
+      Session.save(result);
+      window.location.href = '/morbrief/dashboard.html';
+    } else {
+      showError(result.message || 'Login gagal. Coba lagi.');
+    }
+  }
+
+  function showError(msg) {
+    const box = document.getElementById('errorBox');
+    box.textContent = msg;
+    box.classList.add('show');
+  }
+
+  function setLoading(loading) {
+    const btn = document.getElementById('loginBtn');
+    const text = document.getElementById('btnText');
+    const dots = document.getElementById('loadingDots');
+    btn.disabled = loading;
+    text.style.display = loading ? 'none' : 'inline';
+    dots.classList.toggle('show', loading);
+  }
+
+  // 2. INISIALISASI (Dijalankan otomatis setelah halaman dimuat)
+  document.addEventListener('DOMContentLoaded', function () {
     // Redirect jika sudah login
     redirectIfLoggedIn();
 
@@ -333,46 +371,7 @@
     document.getElementById('password').addEventListener('keypress', e => {
       if (e.key === 'Enter') handleLogin();
     });
-
-    async function handleLogin() {
-      const username = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value.trim();
-
-      if (!username || !password) {
-        showError('Username dan password wajib diisi');
-        return;
-      }
-
-      setLoading(true);
-
-      const result = await Auth.login(username, password);
-
-      setLoading(false);
-
-      if (result.success) {
-        Session.save(result);
-        window.location.href = '/morbrief/dashboard.html';
-      } else {
-        showError(result.message || 'Login gagal. Coba lagi.');
-      }
-    }
-
-    function showError(msg) {
-      const box = document.getElementById('errorBox');
-      box.textContent = msg;
-      box.classList.add('show');
-    }
-
-    function setLoading(loading) {
-      const btn = document.getElementById('loginBtn');
-      const text = document.getElementById('btnText');
-      const dots = document.getElementById('loadingDots');
-      btn.disabled = loading;
-      text.style.display = loading ? 'none' : 'inline';
-      dots.classList.toggle('show', loading);
-    }
-
-    }); // end DOMContentLoaded
-  </script>
+  }); 
+</script>
 </body>
 </html>
