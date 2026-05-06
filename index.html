@@ -6,6 +6,8 @@
   <title>Morbrief — Login</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <!-- api.js dimuat di head agar tersedia saat body diparse -->
+  <script src="js/api.js"></script>
   <style>
     :root {
       --ink: #1a1a2e;
@@ -320,8 +322,10 @@
     </div>
   </div>
 
-  <script src="js/api.js"></script>
   <script>
+    // Semua kode dijalankan setelah DOM siap
+    document.addEventListener('DOMContentLoaded', function () {
+
     // Redirect jika sudah login
     redirectIfLoggedIn();
 
@@ -367,6 +371,8 @@
       text.style.display = loading ? 'none' : 'inline';
       dots.classList.toggle('show', loading);
     }
+
+    }); // end DOMContentLoaded
   </script>
 </body>
 </html>

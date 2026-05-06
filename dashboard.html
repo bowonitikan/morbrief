@@ -6,6 +6,8 @@
   <title>Morbrief — Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <!-- api.js dimuat di head agar Session & requireAuth tersedia saat DOM siap -->
+  <script src="js/api.js"></script>
   <style>
     :root {
       --ink: #1a1a2e;
@@ -667,18 +669,21 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<script src="js/api.js"></script>
+<script src="js/api.js" style="display:none"></script><!-- sudah di head -->
 <script>
+// Semua init dijalankan setelah DOM siap
+document.addEventListener('DOMContentLoaded', function () {
+
 // ===== INIT =====
 let allDocs = [];
 let currentSort = { field: 'tanggalUpload', asc: false };
 let editDocId = null;
 const session = Session.get();
 
-// Guard
-if (!requireAuth()) { /* redirected */ }
+// Guard - redirect ke login jika belum auth
+if (!requireAuth()) return;
 
-// Set user info
+// Set user info di topbar
 document.getElementById('topUserName').textContent = session?.namaLengkap || session?.username || '—';
 document.getElementById('topUserRole').textContent = (session?.peran || '').toUpperCase();
 
@@ -939,6 +944,8 @@ function toast(msg, type = 'success') {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 4000);
 }
+
+}); // end DOMContentLoaded
 </script>
 </body>
 </html>
