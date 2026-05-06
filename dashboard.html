@@ -669,42 +669,15 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<script src="js/api.js" style="display:none"></script><!-- sudah di head -->
 <script>
-// Semua init dijalankan setelah DOM siap
-document.addEventListener('DOMContentLoaded', function () {
-
-// ===== INIT =====
+// ===== VARIABEL GLOBAL =====
 let allDocs = [];
 let currentSort = { field: 'tanggalUpload', asc: false };
 let editDocId = null;
-const session = Session.get();
+let session = null;
+let role = null;
 
-// Guard - redirect ke login jika belum auth
-if (!requireAuth()) return;
-
-// Set user info di topbar
-document.getElementById('topUserName').textContent = session?.namaLengkap || session?.username || '—';
-document.getElementById('topUserRole').textContent = (session?.peran || '').toUpperCase();
-
-// Show role-based nav
-const role = session?.peran;
-if (role === 'admin' || role === 'operator') {
-  document.getElementById('nav-upload').style.display = 'flex';
-  document.getElementById('btnUpload').style.display = 'inline-block';
-}
-if (role === 'admin') {
-  document.getElementById('nav-users').style.display = 'flex';
-}
-
-// Load docs on start
-loadDocs();
-
-// Search listener
-document.getElementById('searchInput').addEventListener('input', () => loadDocs());
-document.getElementById('catFilter').addEventListener('change', () => loadDocs());
-
-// ===== NAVIGATION =====
+// ===== NAVIGASI (dipanggil dari onclick HTML) =====
 function goTo(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -714,7 +687,18 @@ function goTo(page) {
   if (page === 'users') loadUsers();
 }
 
-// ===== DOCUMENTS =====
+function filterCat(cat) {
+  document.getElementById('catFilter').value = cat;
+  loadDocs();
+}
+
+function sortBy(field) {
+  if (currentSort.field === field) currentSort.asc = !currentSort.asc;
+  else { currentSort.field = field; currentSort.asc = true; }
+  loadDocs();
+}
+
+// ===== DOKUMEN =====
 async function loadDocs() {
   showLoading(true);
   const filters = {
@@ -725,26 +709,17 @@ async function loadDocs() {
   };
   const res = await Documents.getAll(filters);
   showLoading(false);
-
-  if (res.success) {
-    allDocs = res.documents;
-    renderDocs(allDocs);
-  } else {
-    toast('Gagal memuat: ' + res.message, 'error');
-  }
+  if (res.success) { allDocs = res.documents; renderDocs(allDocs); }
+  else toast('Gagal memuat: ' + res.message, 'error');
 }
 
 function renderDocs(docs) {
   const tbody = document.getElementById('docsBody');
   const empty = document.getElementById('emptyDocs');
-
   if (!docs || docs.length === 0) {
-    tbody.innerHTML = '';
-    empty.style.display = 'block';
-    return;
+    tbody.innerHTML = ''; empty.style.display = 'block'; return;
   }
   empty.style.display = 'none';
-
   tbody.innerHTML = docs.map(doc => `
     <tr>
       <td>
@@ -769,52 +744,13 @@ function canEdit(doc) {
   return role === 'admin' || (role === 'operator' && doc.uploader === session.username);
 }
 
-function sortBy(field) {
-  if (currentSort.field === field) currentSort.asc = !currentSort.asc;
-  else { currentSort.field = field; currentSort.asc = true; }
-  loadDocs();
-}
-
-function filterCat(cat) {
-  document.getElementById('catFilter').value = cat;
-  loadDocs();
-}
-
 function showLoading(show) {
   document.getElementById('loadingDocs').style.display = show ? 'block' : 'none';
 }
 
-// ===== UPLOAD =====
-async function handleUpload() {
-  const judul = document.getElementById('upJudul').value.trim();
-  const kategori = document.getElementById('upKat').value;
-  const tag = document.getElementById('upTag').value.trim();
-  const fileUrl = document.getElementById('upUrl').value.trim();
-
-  if (!judul || !kategori || !fileUrl) {
-    toast('Judul, kategori, dan URL file wajib diisi', 'error'); return;
-  }
-
-  const res = await Documents.upload({ judul, kategori, tag, fileUrl });
-
-  if (res.success) {
-    toast('Dokumen berhasil disimpan! Ringkasan sedang diproses...', 'success');
-    document.getElementById('upJudul').value = '';
-    document.getElementById('upKat').value = '';
-    document.getElementById('upTag').value = '';
-    document.getElementById('upUrl').value = '';
-    goTo('docs');
-    loadDocs();
-  } else {
-    toast(res.message, 'error');
-  }
-}
-
-// ===== VIEW DOC =====
 function viewDoc(id) {
   const doc = allDocs.find(d => d.id === id);
   if (!doc) return;
-
   document.getElementById('detailContent').innerHTML = `
     <div class="detail-label">Judul</div>
     <div class="detail-val">${esc(doc.judul)}</div>
@@ -827,13 +763,12 @@ function viewDoc(id) {
     <div class="detail-label">Ringkasan AI</div>
     <div class="summary-card">${esc(doc.ringkasan || 'Belum tersedia')}</div>
     <div style="margin-top:20px">
-      <a href="${doc.fileUrl}" target="_blank" class="btn btn-primary" style="display:inline-block; text-decoration:none; font-size:13px">📥 Buka PDF</a>
+      <a href="${doc.fileUrl}" target="_blank" class="btn btn-primary" style="display:inline-block;text-decoration:none;font-size:13px">📥 Buka PDF</a>
     </div>
   `;
   document.getElementById('mdDetail').classList.add('open');
 }
 
-// ===== EDIT DOC =====
 function editDoc(id) {
   const doc = allDocs.find(d => d.id === id);
   if (!doc) return;
@@ -850,16 +785,10 @@ async function submitEdit() {
     kategori: document.getElementById('editKat').value,
     tag: document.getElementById('editTag').value
   });
-  if (res.success) {
-    toast('Dokumen diperbarui', 'success');
-    closeModal('mdEdit');
-    loadDocs();
-  } else {
-    toast(res.message, 'error');
-  }
+  if (res.success) { toast('Dokumen diperbarui', 'success'); closeModal('mdEdit'); loadDocs(); }
+  else toast(res.message, 'error');
 }
 
-// ===== DELETE DOC =====
 async function delDoc(id) {
   if (!confirm('Yakin hapus dokumen ini?')) return;
   const res = await Documents.delete(id);
@@ -867,11 +796,25 @@ async function delDoc(id) {
   else toast(res.message, 'error');
 }
 
+// ===== UPLOAD =====
+async function handleUpload() {
+  const judul = document.getElementById('upJudul').value.trim();
+  const kategori = document.getElementById('upKat').value;
+  const tag = document.getElementById('upTag').value.trim();
+  const fileUrl = document.getElementById('upUrl').value.trim();
+  if (!judul || !kategori || !fileUrl) { toast('Judul, kategori, dan URL file wajib diisi', 'error'); return; }
+  const res = await Documents.upload({ judul, kategori, tag, fileUrl });
+  if (res.success) {
+    toast('Dokumen berhasil disimpan!', 'success');
+    ['upJudul','upKat','upTag','upUrl'].forEach(id => document.getElementById(id).value = '');
+    goTo('docs'); loadDocs();
+  } else toast(res.message, 'error');
+}
+
 // ===== USERS =====
 async function loadUsers() {
   const res = await Users.getAll();
   if (!res.success) { toast(res.message, 'error'); return; }
-
   const roleBadge = { admin: 'badge-gold', era: 'badge-blue', operator: 'badge-green' };
   document.getElementById('usersBody').innerHTML = res.users.map(u => `
     <tr>
@@ -885,26 +828,19 @@ async function loadUsers() {
   `).join('');
 }
 
-function openAddUser() {
-  document.getElementById('mdAddUser').classList.add('open');
-}
+function openAddUser() { document.getElementById('mdAddUser').classList.add('open'); }
 
 async function submitAddUser() {
   const username = document.getElementById('newUsr').value.trim();
   const password = document.getElementById('newPwd').value.trim();
   const namaLengkap = document.getElementById('newName').value.trim();
   const peran = document.getElementById('newRole').value;
-
   if (!username || !namaLengkap) { toast('Username & nama wajib diisi', 'error'); return; }
-
   const res = await Users.add(username, password, peran, namaLengkap);
   if (res.success) {
     toast(`Pengguna dibuat! Password: ${res.password}`, 'success');
-    closeModal('mdAddUser');
-    loadUsers();
-  } else {
-    toast(res.message, 'error');
-  }
+    closeModal('mdAddUser'); loadUsers();
+  } else toast(res.message, 'error');
 }
 
 async function delUser(username) {
@@ -921,9 +857,7 @@ async function handleLogout() {
 }
 
 // ===== UTILS =====
-function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
-}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -945,7 +879,33 @@ function toast(msg, type = 'success') {
   toastTimer = setTimeout(() => el.classList.remove('show'), 4000);
 }
 
-}); // end DOMContentLoaded
+// ===== INIT: jalankan setelah DOM siap =====
+document.addEventListener('DOMContentLoaded', function () {
+  // Guard - redirect ke login jika belum auth
+  if (!requireAuth()) return;
+
+  // Ambil session
+  session = Session.get();
+  role = session?.peran;
+
+  // Set user info di topbar
+  document.getElementById('topUserName').textContent = session?.namaLengkap || session?.username || '—';
+  document.getElementById('topUserRole').textContent = (role || '').toUpperCase();
+
+  // Tampilkan nav sesuai peran
+  if (role === 'admin' || role === 'operator') {
+    document.getElementById('nav-upload').style.display = 'flex';
+    document.getElementById('btnUpload').style.display = 'inline-block';
+  }
+  if (role === 'admin') {
+    document.getElementById('nav-users').style.display = 'flex';
+  }
+
+  // Load data & pasang listener
+  loadDocs();
+  document.getElementById('searchInput').addEventListener('input', () => loadDocs());
+  document.getElementById('catFilter').addEventListener('change', () => loadDocs());
+});
 </script>
 </body>
 </html>
