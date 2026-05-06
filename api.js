@@ -6,7 +6,7 @@
 
 // ⚠️ GANTI dengan URL deployment GAS Anda
 // Dapatkan dari: GAS Editor → Deploy → Manage Deployments → URL
-const GAS_API_URL = 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec';
+const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzBTIP_sRpknEKfVLqrbUjlFEX5bWRQdd3vf0R1_24/exec';
 
 /**
  * Kirim request ke GAS API
