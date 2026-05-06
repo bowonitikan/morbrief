@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Morbrief — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #1a1a2e;
+      --paper: #f5f0e8;
+      --gold: #c9a84c;
+      --gold-light: #e8d5a3;
+      --rust: #8b3a2a;
+      --muted: #7a7265;
+      --border: rgba(26,26,46,0.12);
+      --sidebar-w: 230px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ===== TOPBAR ===== */
+    .topbar {
+      background: var(--ink);
+      padding: 0 30px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .topbar-brand {
+      font-family: 'DM Serif Display', serif;
+      font-size: 20px;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    .topbar-brand span { color: var(--gold); }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .user-chip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+
+    .user-name { color: rgba(255,255,255,0.8); }
+
+    .role-badge {
+      background: rgba(201,168,76,0.2);
+      color: var(--gold);
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .btn-out {
+      background: none;
+      border: 1px solid rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.6);
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-out:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* ===== LAYOUT ===== */
+    .app-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: #fff;
+      border-right: 1px solid var(--border);
+      padding: 30px 0;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    .nav-section {
+      padding: 0 20px;
+      margin-bottom: 8px;
+    }
+
+    .nav-section-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+      padding: 0 10px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--muted);
+      transition: all 0.2s;
+      margin-bottom: 2px;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+    }
+
+    .nav-item:hover { background: var(--paper); color: var(--ink); }
+    .nav-item.active { background: var(--ink); color: #fff; }
+    .nav-item.active .nav-icon { opacity: 1; }
+
+    .nav-icon { font-size: 15px; }
+
+    .nav-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 20px;
+    }
+
+    /* ===== MAIN CONTENT ===== */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 36px 40px;
+    }
+
+    .page { display: none; }
+    .page.active { display: block; animation: fadeUp 0.25s ease; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== PAGE HEADER ===== */
+    .page-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 32px;
+      color: var(--ink);
+      margin-bottom: 6px;
+    }
+
+    .page-sub { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
+
+    /* ===== TOOLBAR ===== */
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .search-wrap {
+      flex: 1;
+      min-width: 200px;
+      position: relative;
+    }
+
+    .search-wrap input {
+      width: 100%;
+      padding: 10px 14px 10px 36px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-wrap input:focus { border-color: var(--gold); }
+
+    .search-icon {
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    select.filter {
+      padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+      cursor: pointer;
+    }
+
+    select.filter:focus { border-color: var(--gold); }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+
+    .btn-primary { background: var(--ink); color: #fff; }
+    .btn-primary:hover { background: #2d2d4a; }
+    .btn-ghost {
+      background: none;
+      border: 1.5px solid var(--border);
+      color: var(--muted);
+    }
+    .btn-ghost:hover { border-color: var(--ink); color: var(--ink); }
+
+    /* ===== TABLE ===== */
+    .table-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+    thead th {
+      padding: 14px 16px;
+      text-align: left;
+      font-weight: 500;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+      background: #fafafa;
+    }
+
+    thead th:hover { color: var(--ink); }
+
+    tbody td {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(26,26,46,0.06);
+      vertical-align: middle;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: rgba(245,240,232,0.5); }
+
+    .doc-title { font-weight: 500; color: var(--ink); }
+    .doc-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .badge-gold { background: rgba(201,168,76,0.15); color: #8a6b1a; }
+    .badge-blue { background: rgba(59,130,246,0.1); color: #1e40af; }
+    .badge-green { background: rgba(16,185,129,0.1); color: #065f46; }
+    .badge-muted { background: rgba(122,114,101,0.1); color: var(--muted); }
+
+    .action-row { display: flex; gap: 6px; align-items: center; }
+
+    .btn-xs {
+      padding: 5px 10px;
+      border: none;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+    }
+
+    .btn-xs-view { background: rgba(26,26,46,0.06); color: var(--ink); }
+    .btn-xs-view:hover { background: var(--ink); color: #fff; }
+    .btn-xs-edit { background: rgba(201,168,76,0.1); color: #8a6b1a; }
+    .btn-xs-edit:hover { background: var(--gold); color: #fff; }
+    .btn-xs-del { background: rgba(139,58,42,0.08); color: var(--rust); }
+    .btn-xs-del:hover { background: var(--rust); color: #fff; }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .empty-state p { font-size: 14px; margin-top: 8px; }
+
+    /* ===== MODAL ===== */
+    .overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(26,26,46,0.5);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .overlay.open { display: flex; }
+
+    .modal {
+      background: #fff;
+      border-radius: 12px;
+      padding: 36px;
+      width: 90%;
+      max-width: 520px;
+      max-height: 85vh;
+      overflow-y: auto;
+      animation: modalIn 0.2s ease;
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.96) translateY(8px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .modal-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 22px;
+      margin-bottom: 24px;
+    }
+
+    .field { margin-bottom: 20px; }
+
+    .field label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .field input, .field select, .field textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: var(--ink);
+      background: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus { border-color: var(--gold); }
+
+    .field textarea { resize: vertical; min-height: 80px; }
+
+    .modal-footer {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Detail doc */
+    .detail-label {
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .detail-val {
+      font-size: 14px;
+      color: var(--ink);
+      margin-bottom: 18px;
+      line-height: 1.5;
+    }
+
+    .summary-card {
+      background: var(--paper);
+      border-left: 3px solid var(--gold);
+      padding: 16px;
+      border-radius: 0 6px 6px 0;
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--ink);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 30px; right: 30px;
+      background: var(--ink);
+      color: #fff;
+      padding: 14px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      z-index: 999;
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all 0.3s;
+    }
+
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.success { border-left: 3px solid var(--gold); }
+    .toast.error { border-left: 3px solid var(--rust); }
+
+    /* Spinner */
+    .spinner {
+      border: 3px solid var(--border);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      width: 20px; height: 20px;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      .app-body { flex-direction: column; }
+      .sidebar { width: 100%; display: flex; flex-wrap: nowrap; overflow-x: auto; padding: 10px 0; height: auto; }
+      .nav-section { display: flex; flex-direction: row; gap: 4px; margin-bottom: 0; }
+      .nav-section-label, .nav-divider { display: none; }
+      .nav-item { white-space: nowrap; padding: 8px 14px; }
+      .main { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-brand">Mor<span>brief</span></div>
+  <div class="topbar-right">
+    <div class="user-chip">
+      <span class="user-name" id="topUserName">—</span>
+      <span class="role-badge" id="topUserRole">—</span>
+    </div>
+    <button class="btn-out" onclick="handleLogout()">Keluar</button>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="app-body">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="nav-section">
+      <div class="nav-section-label">Menu</div>
+      <button class="nav-item active" id="nav-docs" onclick="goTo('docs')">
+        <span class="nav-icon">📄</span> Dokumen
+      </button>
+      <button class="nav-item" id="nav-upload" onclick="goTo('upload')" style="display:none">
+        <span class="nav-icon">📤</span> Upload
+      </button>
+      <button class="nav-item" id="nav-users" onclick="goTo('users')" style="display:none">
+        <span class="nav-icon">👥</span> Pengguna
+      </button>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-section">
+      <div class="nav-section-label">Kategori</div>
+      <button class="nav-item" onclick="filterCat('Surat')"><span class="nav-icon">📮</span> Surat</button>
+      <button class="nav-item" onclick="filterCat('Laporan')"><span class="nav-icon">📊</span> Laporan</button>
+      <button class="nav-item" onclick="filterCat('Kontrak')"><span class="nav-icon">📝</span> Kontrak</button>
+      <button class="nav-item" onclick="filterCat('Lainnya')"><span class="nav-icon">📌</span> Lainnya</button>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- PAGE: DOKUMEN -->
+    <div id="page-docs" class="page active">
+      <h1 class="page-title">Arsip Dokumen</h1>
+      <p class="page-sub">Telusuri dan kelola dokumen PDF</p>
+
+      <div class="toolbar">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="searchInput" placeholder="Cari judul, ringkasan, tag...">
+        </div>
+        <select class="filter" id="catFilter">
+          <option value="">Semua Kategori</option>
+          <option value="Surat">Surat</option>
+          <option value="Laporan">Laporan</option>
+          <option value="Kontrak">Kontrak</option>
+          <option value="Lainnya">Lainnya</option>
+        </select>
+        <button class="btn btn-ghost" onclick="loadDocs()">↺ Refresh</button>
+        <button class="btn btn-primary" id="btnUpload" onclick="goTo('upload')" style="display:none">+ Upload</button>
+      </div>
+
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="sortBy('judul')">Judul ↕</th>
+              <th onclick="sortBy('kategori')">Kategori ↕</th>
+              <th onclick="sortBy('tanggalUpload')">Tanggal ↕</th>
+              <th onclick="sortBy('uploader')">Uploader ↕</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="docsBody"></tbody>
+        </table>
+        <div id="emptyDocs" class="empty-state" style="display:none">
+          <div style="font-size:40px">📭</div>
+          <p>Tidak ada dokumen ditemukan</p>
+        </div>
+        <div id="loadingDocs" class="empty-state">
+          <div class="spinner"></div>
+          <p style="margin-top:12px">Memuat dokumen...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: UPLOAD -->
+    <div id="page-upload" class="page">
+      <h1 class="page-title">Upload Dokumen</h1>
+      <p class="page-sub">Tambah dokumen PDF baru ke sistem arsip</p>
+
+      <div style="max-width:500px; background:#fff; border:1px solid var(--border); border-radius:10px; padding:32px;">
+        <div class="field">
+          <label>Judul Dokumen</label>
+          <input type="text" id="upJudul" placeholder="Nama dokumen">
+        </div>
+        <div class="field">
+          <label>Kategori</label>
+          <select id="upKat">
+            <option value="">Pilih kategori...</option>
+            <option>Surat</option><option>Laporan</option>
+            <option>Kontrak</option><option>Lainnya</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Tag (pisahkan koma)</label>
+          <input type="text" id="upTag" placeholder="contoh: penting, 2024, keuangan">
+        </div>
+        <div class="field">
+          <label>URL File Google Drive</label>
+          <input type="url" id="upUrl" placeholder="https://drive.google.com/file/d/...">
+          <p style="font-size:12px; color:var(--muted); margin-top:6px;">Upload file ke Drive terlebih dahulu, lalu paste link-nya di sini.</p>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:8px;">
+          <button class="btn btn-ghost" onclick="goTo('docs')">Batal</button>
+          <button class="btn btn-primary" onclick="handleUpload()">💾 Simpan Dokumen</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: PENGGUNA -->
+    <div id="page-users" class="page">
+      <h1 class="page-title">Manajemen Pengguna</h1>
+      <p class="page-sub">Kelola akun admin, era, dan operator</p>
+
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="openAddUser()">+ Tambah Pengguna</button>
+      </div>
+
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Username</th><th>Nama</th><th>Peran</th>
+              <th>Status</th><th>Dibuat</th><th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="usersBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL: Detail Dokumen -->
+<div class="overlay" id="mdDetail">
+  <div class="modal">
+    <div class="modal-title">Detail Dokumen</div>
+    <div id="detailContent"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('mdDetail')">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Edit Dokumen -->
+<div class="overlay" id="mdEdit">
+  <div class="modal">
+    <div class="modal-title">Edit Dokumen</div>
+    <div class="field"><label>Judul</label><input type="text" id="editJudul"></div>
+    <div class="field"><label>Kategori</label>
+      <select id="editKat"><option>Surat</option><option>Laporan</option><option>Kontrak</option><option>Lainnya</option></select>
+    </div>
+    <div class="field"><label>Tag</label><input type="text" id="editTag"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('mdEdit')">Batal</button>
+      <button class="btn btn-primary" onclick="submitEdit()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Tambah User -->
+<div class="overlay" id="mdAddUser">
+  <div class="modal">
+    <div class="modal-title">Tambah Pengguna</div>
+    <div class="field"><label>Username</label><input type="text" id="newUsr"></div>
+    <div class="field"><label>Password (kosongkan = otomatis)</label><input type="password" id="newPwd"></div>
+    <div class="field"><label>Nama Lengkap</label><input type="text" id="newName"></div>
+    <div class="field"><label>Peran</label>
+      <select id="newRole">
+        <option value="admin">Admin</option>
+        <option value="era">Era (Pembaca)</option>
+        <option value="operator">Operator</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('mdAddUser')">Batal</button>
+      <button class="btn btn-primary" onclick="submitAddUser()">Buat Pengguna</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="js/api.js"></script>
+<script>
+// ===== INIT =====
+let allDocs = [];
+let currentSort = { field: 'tanggalUpload', asc: false };
+let editDocId = null;
+const session = Session.get();
+
+// Guard
+if (!requireAuth()) { /* redirected */ }
+
+// Set user info
+document.getElementById('topUserName').textContent = session?.namaLengkap || session?.username || '—';
+document.getElementById('topUserRole').textContent = (session?.peran || '').toUpperCase();
+
+// Show role-based nav
+const role = session?.peran;
+if (role === 'admin' || role === 'operator') {
+  document.getElementById('nav-upload').style.display = 'flex';
+  document.getElementById('btnUpload').style.display = 'inline-block';
+}
+if (role === 'admin') {
+  document.getElementById('nav-users').style.display = 'flex';
+}
+
+// Load docs on start
+loadDocs();
+
+// Search listener
+document.getElementById('searchInput').addEventListener('input', () => loadDocs());
+document.getElementById('catFilter').addEventListener('change', () => loadDocs());
+
+// ===== NAVIGATION =====
+function goTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  const nav = document.getElementById('nav-' + page);
+  if (nav) nav.classList.add('active');
+  if (page === 'users') loadUsers();
+}
+
+// ===== DOCUMENTS =====
+async function loadDocs() {
+  showLoading(true);
+  const filters = {
+    search: document.getElementById('searchInput').value,
+    kategori: document.getElementById('catFilter').value || undefined,
+    sortBy: currentSort.field,
+    ascending: currentSort.asc
+  };
+  const res = await Documents.getAll(filters);
+  showLoading(false);
+
+  if (res.success) {
+    allDocs = res.documents;
+    renderDocs(allDocs);
+  } else {
+    toast('Gagal memuat: ' + res.message, 'error');
+  }
+}
+
+function renderDocs(docs) {
+  const tbody = document.getElementById('docsBody');
+  const empty = document.getElementById('emptyDocs');
+
+  if (!docs || docs.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = docs.map(doc => `
+    <tr>
+      <td>
+        <div class="doc-title">${esc(doc.judul)}</div>
+        <div class="doc-meta">${esc(doc.tag || '')}</div>
+      </td>
+      <td><span class="badge badge-gold">${doc.kategori}</span></td>
+      <td style="color:var(--muted);font-size:12px">${fmtDate(doc.tanggalUpload)}</td>
+      <td style="font-size:12px;color:var(--muted)">${doc.uploader}</td>
+      <td>
+        <div class="action-row">
+          <button class="btn-xs btn-xs-view" onclick="viewDoc('${doc.id}')">Lihat</button>
+          ${canEdit(doc) ? `<button class="btn-xs btn-xs-edit" onclick="editDoc('${doc.id}')">Edit</button>` : ''}
+          ${role === 'admin' ? `<button class="btn-xs btn-xs-del" onclick="delDoc('${doc.id}')">Hapus</button>` : ''}
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function canEdit(doc) {
+  return role === 'admin' || (role === 'operator' && doc.uploader === session.username);
+}
+
+function sortBy(field) {
+  if (currentSort.field === field) currentSort.asc = !currentSort.asc;
+  else { currentSort.field = field; currentSort.asc = true; }
+  loadDocs();
+}
+
+function filterCat(cat) {
+  document.getElementById('catFilter').value = cat;
+  loadDocs();
+}
+
+function showLoading(show) {
+  document.getElementById('loadingDocs').style.display = show ? 'block' : 'none';
+}
+
+// ===== UPLOAD =====
+async function handleUpload() {
+  const judul = document.getElementById('upJudul').value.trim();
+  const kategori = document.getElementById('upKat').value;
+  const tag = document.getElementById('upTag').value.trim();
+  const fileUrl = document.getElementById('upUrl').value.trim();
+
+  if (!judul || !kategori || !fileUrl) {
+    toast('Judul, kategori, dan URL file wajib diisi', 'error'); return;
+  }
+
+  const res = await Documents.upload({ judul, kategori, tag, fileUrl });
+
+  if (res.success) {
+    toast('Dokumen berhasil disimpan! Ringkasan sedang diproses...', 'success');
+    document.getElementById('upJudul').value = '';
+    document.getElementById('upKat').value = '';
+    document.getElementById('upTag').value = '';
+    document.getElementById('upUrl').value = '';
+    goTo('docs');
+    loadDocs();
+  } else {
+    toast(res.message, 'error');
+  }
+}
+
+// ===== VIEW DOC =====
+function viewDoc(id) {
+  const doc = allDocs.find(d => d.id === id);
+  if (!doc) return;
+
+  document.getElementById('detailContent').innerHTML = `
+    <div class="detail-label">Judul</div>
+    <div class="detail-val">${esc(doc.judul)}</div>
+    <div class="detail-label">Kategori</div>
+    <div class="detail-val"><span class="badge badge-gold">${doc.kategori}</span></div>
+    <div class="detail-label">Tag</div>
+    <div class="detail-val">${esc(doc.tag || '—')}</div>
+    <div class="detail-label">Uploader</div>
+    <div class="detail-val">${doc.uploader} &nbsp;·&nbsp; ${fmtDate(doc.tanggalUpload)}</div>
+    <div class="detail-label">Ringkasan AI</div>
+    <div class="summary-card">${esc(doc.ringkasan || 'Belum tersedia')}</div>
+    <div style="margin-top:20px">
+      <a href="${doc.fileUrl}" target="_blank" class="btn btn-primary" style="display:inline-block; text-decoration:none; font-size:13px">📥 Buka PDF</a>
+    </div>
+  `;
+  document.getElementById('mdDetail').classList.add('open');
+}
+
+// ===== EDIT DOC =====
+function editDoc(id) {
+  const doc = allDocs.find(d => d.id === id);
+  if (!doc) return;
+  editDocId = id;
+  document.getElementById('editJudul').value = doc.judul;
+  document.getElementById('editKat').value = doc.kategori;
+  document.getElementById('editTag').value = doc.tag || '';
+  document.getElementById('mdEdit').classList.add('open');
+}
+
+async function submitEdit() {
+  const res = await Documents.update(editDocId, {
+    judul: document.getElementById('editJudul').value,
+    kategori: document.getElementById('editKat').value,
+    tag: document.getElementById('editTag').value
+  });
+  if (res.success) {
+    toast('Dokumen diperbarui', 'success');
+    closeModal('mdEdit');
+    loadDocs();
+  } else {
+    toast(res.message, 'error');
+  }
+}
+
+// ===== DELETE DOC =====
+async function delDoc(id) {
+  if (!confirm('Yakin hapus dokumen ini?')) return;
+  const res = await Documents.delete(id);
+  if (res.success) { toast('Dokumen dihapus', 'success'); loadDocs(); }
+  else toast(res.message, 'error');
+}
+
+// ===== USERS =====
+async function loadUsers() {
+  const res = await Users.getAll();
+  if (!res.success) { toast(res.message, 'error'); return; }
+
+  const roleBadge = { admin: 'badge-gold', era: 'badge-blue', operator: 'badge-green' };
+  document.getElementById('usersBody').innerHTML = res.users.map(u => `
+    <tr>
+      <td><strong>${u.username}</strong></td>
+      <td>${u.namaLengkap}</td>
+      <td><span class="badge ${roleBadge[u.peran] || 'badge-muted'}">${u.peran}</span></td>
+      <td><span class="badge badge-green">${u.status}</span></td>
+      <td style="font-size:12px;color:var(--muted)">${fmtDate(u.dibuat)}</td>
+      <td><button class="btn-xs btn-xs-del" onclick="delUser('${u.username}')">Hapus</button></td>
+    </tr>
+  `).join('');
+}
+
+function openAddUser() {
+  document.getElementById('mdAddUser').classList.add('open');
+}
+
+async function submitAddUser() {
+  const username = document.getElementById('newUsr').value.trim();
+  const password = document.getElementById('newPwd').value.trim();
+  const namaLengkap = document.getElementById('newName').value.trim();
+  const peran = document.getElementById('newRole').value;
+
+  if (!username || !namaLengkap) { toast('Username & nama wajib diisi', 'error'); return; }
+
+  const res = await Users.add(username, password, peran, namaLengkap);
+  if (res.success) {
+    toast(`Pengguna dibuat! Password: ${res.password}`, 'success');
+    closeModal('mdAddUser');
+    loadUsers();
+  } else {
+    toast(res.message, 'error');
+  }
+}
+
+async function delUser(username) {
+  if (!confirm('Hapus user ' + username + '?')) return;
+  const res = await Users.delete(username);
+  if (res.success) { toast('Pengguna dihapus', 'success'); loadUsers(); }
+  else toast(res.message, 'error');
+}
+
+// ===== LOGOUT =====
+async function handleLogout() {
+  await Auth.logout();
+  window.location.href = '/morbrief/index.html';
+}
+
+// ===== UTILS =====
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' });
+}
+
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+
+let toastTimer;
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 4000);
+}
+</script>
+</body>
+</html>

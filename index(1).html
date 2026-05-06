@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Morbrief — Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #1a1a2e;
+      --paper: #f5f0e8;
+      --gold: #c9a84c;
+      --gold-light: #e8d5a3;
+      --rust: #8b3a2a;
+      --muted: #7a7265;
+      --border: rgba(26,26,46,0.12);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--paper);
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    /* ===== LEFT PANEL ===== */
+    .left-panel {
+      background: var(--ink);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 60px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .left-panel::before {
+      content: '';
+      position: absolute;
+      top: -100px; left: -100px;
+      width: 400px; height: 400px;
+      border: 1px solid rgba(201,168,76,0.15);
+      border-radius: 50%;
+    }
+
+    .left-panel::after {
+      content: '';
+      position: absolute;
+      bottom: -80px; right: -80px;
+      width: 300px; height: 300px;
+      border: 1px solid rgba(201,168,76,0.1);
+      border-radius: 50%;
+    }
+
+    .brand {
+      position: relative;
+      z-index: 1;
+    }
+
+    .brand-mark {
+      font-family: 'DM Serif Display', serif;
+      font-size: 13px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .brand-name {
+      font-family: 'DM Serif Display', serif;
+      font-size: 52px;
+      color: #fff;
+      line-height: 1;
+      letter-spacing: -1px;
+    }
+
+    .brand-name span {
+      color: var(--gold);
+    }
+
+    .tagline {
+      margin-top: 20px;
+      color: rgba(255,255,255,0.4);
+      font-size: 14px;
+      font-weight: 300;
+      line-height: 1.7;
+      max-width: 280px;
+    }
+
+    .decorative-lines {
+      position: relative;
+      z-index: 1;
+    }
+
+    .decorative-lines p {
+      font-family: 'DM Serif Display', serif;
+      color: rgba(255,255,255,0.08);
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      line-height: 2.5;
+    }
+
+    /* ===== RIGHT PANEL ===== */
+    .right-panel {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 60px;
+      background: var(--paper);
+    }
+
+    .login-form {
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .form-heading {
+      margin-bottom: 40px;
+    }
+
+    .form-heading h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 28px;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+
+    .form-heading p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .field {
+      margin-bottom: 22px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 14px 0;
+      border: none;
+      border-bottom: 1.5px solid var(--border);
+      background: transparent;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      color: var(--ink);
+      outline: none;
+      transition: border-color 0.3s;
+    }
+
+    .field input:focus {
+      border-bottom-color: var(--gold);
+    }
+
+    .field input::placeholder {
+      color: rgba(26,26,46,0.25);
+    }
+
+    .error-box {
+      background: rgba(139,58,42,0.08);
+      border: 1px solid rgba(139,58,42,0.2);
+      border-left: 3px solid var(--rust);
+      padding: 12px 16px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: var(--rust);
+      display: none;
+    }
+
+    .error-box.show { display: block; }
+
+    .btn-login {
+      width: 100%;
+      padding: 16px;
+      background: var(--ink);
+      color: #fff;
+      border: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-top: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-login::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--gold);
+      transform: translateX(-100%);
+      transition: transform 0.4s ease;
+    }
+
+    .btn-login:hover::after { transform: translateX(0); }
+
+    .btn-login span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .btn-login:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-login:disabled::after { display: none; }
+
+    .loading-dots {
+      display: none;
+      gap: 4px;
+      justify-content: center;
+    }
+
+    .loading-dots.show { display: flex; }
+
+    .loading-dots span {
+      width: 6px; height: 6px;
+      background: var(--gold-light);
+      border-radius: 50%;
+      animation: bounce 1.2s ease infinite;
+    }
+
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+
+    .footer-note {
+      margin-top: 40px;
+      padding-top: 30px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      body { grid-template-columns: 1fr; }
+      .left-panel {
+        padding: 40px;
+        min-height: 200px;
+      }
+      .brand-name { font-size: 36px; }
+      .decorative-lines { display: none; }
+      .right-panel { padding: 40px 30px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- LEFT: Branding -->
+  <div class="left-panel">
+    <div class="brand">
+      <span class="brand-mark">Sistem Manajemen</span>
+      <div class="brand-name">Mor<span>brief</span></div>
+      <p class="tagline">Kurator arsip dokumen PDF dengan ringkasan cerdas berbasis AI.</p>
+    </div>
+    <div class="decorative-lines">
+      <p>Arsip · Dokumen · Ringkasan · Akses</p>
+      <p>Surat · Laporan · Kontrak · Data</p>
+      <p>Admin · Era · Operator · Sistem</p>
+    </div>
+  </div>
+
+  <!-- RIGHT: Login Form -->
+  <div class="right-panel">
+    <div class="login-form">
+      <div class="form-heading">
+        <h2>Selamat Datang</h2>
+        <p>Masuk untuk mengakses sistem arsip</p>
+      </div>
+
+      <div id="errorBox" class="error-box"></div>
+
+      <div class="field">
+        <label for="username">Username</label>
+        <input type="text" id="username" placeholder="nama.pengguna" autocomplete="username">
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+
+      <button class="btn-login" id="loginBtn" onclick="handleLogin()">
+        <span id="btnText">Masuk ke Sistem</span>
+        <div class="loading-dots" id="loadingDots">
+          <span></span><span></span><span></span>
+        </div>
+      </button>
+
+      <div class="footer-note">
+        Morbrief · Sistem Manajemen Arsip PDF<br>
+        Hanya untuk pengguna terdaftar
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    // Redirect jika sudah login
+    redirectIfLoggedIn();
+
+    // Enter key handler
+    document.getElementById('password').addEventListener('keypress', e => {
+      if (e.key === 'Enter') handleLogin();
+    });
+
+    async function handleLogin() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+
+      if (!username || !password) {
+        showError('Username dan password wajib diisi');
+        return;
+      }
+
+      setLoading(true);
+
+      const result = await Auth.login(username, password);
+
+      setLoading(false);
+
+      if (result.success) {
+        Session.save(result);
+        window.location.href = '/morbrief/dashboard.html';
+      } else {
+        showError(result.message || 'Login gagal. Coba lagi.');
+      }
+    }
+
+    function showError(msg) {
+      const box = document.getElementById('errorBox');
+      box.textContent = msg;
+      box.classList.add('show');
+    }
+
+    function setLoading(loading) {
+      const btn = document.getElementById('loginBtn');
+      const text = document.getElementById('btnText');
+      const dots = document.getElementById('loadingDots');
+      btn.disabled = loading;
+      text.style.display = loading ? 'none' : 'inline';
+      dots.classList.toggle('show', loading);
+    }
+  </script>
+</body>
+</html>
