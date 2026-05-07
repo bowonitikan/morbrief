@@ -564,32 +564,63 @@
       <h1 class="page-title">Upload Dokumen</h1>
       <p class="page-sub">Tambah dokumen PDF baru ke sistem arsip</p>
 
-      <div style="max-width:500px; background:#fff; border:1px solid var(--border); border-radius:10px; padding:32px;">
-        <div class="field">
-          <label>Judul Dokumen</label>
-          <input type="text" id="upJudul" placeholder="Nama dokumen">
+      <div style="max-width:560px;">
+
+        <!-- LANGKAH 1: Buka Drive -->
+        <div style="background:#fff; border:1px solid var(--border); border-radius:10px; padding:24px; margin-bottom:16px;">
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+            <div style="background:var(--ink); color:#fff; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; flex-shrink:0;">1</div>
+            <div>
+              <div style="font-weight:600; font-size:14px;">Upload PDF ke Google Drive</div>
+              <div style="font-size:12px; color:var(--muted);">Klik tombol di bawah, upload file PDF, lalu salin link-nya</div>
+            </div>
+          </div>
+          <a href="https://drive.google.com/drive/folders/1JFKPsgbh2nS_heZ2ChLSDLLuXy4DoRSb?usp=sharing"
+             target="_blank"
+             style="display:inline-flex; align-items:center; gap:8px; background:#1a73e8; color:#fff; padding:10px 18px; border-radius:6px; text-decoration:none; font-size:13px; font-weight:500;">
+            &#x2601;&#xFE0F; Buka Folder Google Drive
+          </a>
+          <div style="margin-top:14px; background:var(--paper); border-radius:6px; padding:12px; font-size:12px; color:var(--muted); line-height:1.8;">
+            <strong style="color:var(--ink);">Cara salin link file:</strong><br>
+            Klik kanan file PDF &rarr; <em>Get link / Dapatkan link</em> &rarr; ubah akses ke <em>"Anyone with the link"</em> &rarr; Copy link
+          </div>
         </div>
-        <div class="field">
-          <label>Kategori</label>
-          <select id="upKat">
-            <option value="">Pilih kategori...</option>
-            <option>Surat</option><option>Laporan</option>
-            <option>Kontrak</option><option>Lainnya</option>
-          </select>
+
+        <!-- LANGKAH 2: Isi Form -->
+        <div style="background:#fff; border:1px solid var(--border); border-radius:10px; padding:24px;">
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+            <div style="background:var(--ink); color:#fff; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; flex-shrink:0;">2</div>
+            <div>
+              <div style="font-weight:600; font-size:14px;">Isi Informasi Dokumen</div>
+              <div style="font-size:12px; color:var(--muted);">Paste link Drive dan lengkapi metadata</div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Link File Google Drive</label>
+            <input type="url" id="upUrl" placeholder="https://drive.google.com/file/d/...">
+          </div>
+          <div class="field">
+            <label>Judul Dokumen</label>
+            <input type="text" id="upJudul" placeholder="Nama dokumen">
+          </div>
+          <div class="field">
+            <label>Kategori</label>
+            <select id="upKat">
+              <option value="">Pilih kategori...</option>
+              <option>Surat</option><option>Laporan</option>
+              <option>Kontrak</option><option>Lainnya</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Tag <span style="font-weight:400;color:var(--muted)">(pisahkan koma)</span></label>
+            <input type="text" id="upTag" placeholder="contoh: penting, 2024, keuangan">
+          </div>
+          <div style="display:flex; gap:10px; margin-top:8px;">
+            <button class="btn btn-ghost" onclick="goTo('docs')">Batal</button>
+            <button class="btn btn-primary" id="btnSimpan" onclick="handleUpload()">&#x1F4BE; Simpan Dokumen</button>
+          </div>
         </div>
-        <div class="field">
-          <label>Tag (pisahkan koma)</label>
-          <input type="text" id="upTag" placeholder="contoh: penting, 2024, keuangan">
-        </div>
-        <div class="field">
-          <label>URL File Google Drive</label>
-          <input type="url" id="upUrl" placeholder="https://drive.google.com/file/d/...">
-          <p style="font-size:12px; color:var(--muted); margin-top:6px;">Upload file ke Drive terlebih dahulu, lalu paste link-nya di sini.</p>
-        </div>
-        <div style="display:flex; gap:10px; margin-top:8px;">
-          <button class="btn btn-ghost" onclick="goTo('docs')">Batal</button>
-          <button class="btn btn-primary" onclick="handleUpload()">💾 Simpan Dokumen</button>
-        </div>
+
       </div>
     </div>
 
@@ -748,9 +779,28 @@ function showLoading(show) {
   document.getElementById('loadingDocs').style.display = show ? 'block' : 'none';
 }
 
+let summaryPollTimer = null;
+
 function viewDoc(id) {
   const doc = allDocs.find(d => d.id === id);
   if (!doc) return;
+
+  // Stop polling sebelumnya jika ada
+  if (summaryPollTimer) { clearInterval(summaryPollTimer); summaryPollTimer = null; }
+
+  const isProcessing = !doc.ringkasan ||
+    doc.ringkasan === 'Memproses ringkasan...' ||
+    doc.ringkasan === 'Tunggu ringkasan...';
+
+  const ringkasanHtml = isProcessing
+    ? `<div class="summary-card" id="summaryBox">
+        <div style="display:flex;align-items:center;gap:10px;color:var(--muted);">
+          <div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>
+          <span style="font-size:13px;">Ringkasan sedang diproses AI... biasanya 15–30 detik</span>
+        </div>
+       </div>`
+    : `<div class="summary-card" id="summaryBox">${esc(doc.ringkasan)}</div>`;
+
   document.getElementById('detailContent').innerHTML = `
     <div class="detail-label">Judul</div>
     <div class="detail-val">${esc(doc.judul)}</div>
@@ -761,12 +811,49 @@ function viewDoc(id) {
     <div class="detail-label">Uploader</div>
     <div class="detail-val">${doc.uploader} &nbsp;·&nbsp; ${fmtDate(doc.tanggalUpload)}</div>
     <div class="detail-label">Ringkasan AI</div>
-    <div class="summary-card">${esc(doc.ringkasan || 'Belum tersedia')}</div>
+    ${ringkasanHtml}
     <div style="margin-top:20px">
       <a href="${doc.fileUrl}" target="_blank" class="btn btn-primary" style="display:inline-block;text-decoration:none;font-size:13px">📥 Buka PDF</a>
     </div>
   `;
   document.getElementById('mdDetail').classList.add('open');
+
+  // Jika masih diproses, polling setiap 8 detik
+  if (isProcessing) {
+    let attempts = 0;
+    summaryPollTimer = setInterval(async () => {
+      attempts++;
+      if (attempts > 10) { clearInterval(summaryPollTimer); return; } // max 80 detik
+      const res = await Documents.getAll({ search: doc.judul });
+      if (!res.success) return;
+      const updated = res.documents.find(d => d.id === id);
+      if (!updated) return;
+      const stillProcessing = !updated.ringkasan ||
+        updated.ringkasan === 'Memproses ringkasan...' ||
+        updated.ringkasan === 'Tunggu ringkasan...';
+      if (!stillProcessing) {
+        clearInterval(summaryPollTimer);
+        summaryPollTimer = null;
+        const box = document.getElementById('summaryBox');
+        if (box) {
+          box.innerHTML = esc(updated.ringkasan);
+          // Update cache lokal
+          const idx = allDocs.findIndex(d => d.id === id);
+          if (idx >= 0) allDocs[idx].ringkasan = updated.ringkasan;
+        }
+      }
+    }, 8000);
+  }
+}
+
+// Hentikan polling saat modal ditutup
+const _origCloseModal = closeModal;
+function closeModal(id) {
+  if (id === 'mdDetail' && summaryPollTimer) {
+    clearInterval(summaryPollTimer);
+    summaryPollTimer = null;
+  }
+  document.getElementById(id).classList.remove('open');
 }
 
 function editDoc(id) {
@@ -857,7 +944,6 @@ async function handleLogout() {
 }
 
 // ===== UTILS =====
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 function fmtDate(d) {
   if (!d) return '—';
