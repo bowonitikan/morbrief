@@ -8,6 +8,30 @@
 // Dapatkan dari: GAS Editor → Deploy → Manage Deployments → URL
 const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbx9qIISf9ePbSjCkaSZYUtEI_WyHg9vUjE5kOAdPNVMSiCOj1_4o7rcbTEd3FOjwFh6/exec';
 
+// ============================================
+// CACHE LOKAL - kurangi pemanggilan ke GAS
+// ============================================
+const Cache = {
+  _store: {},
+  TTL: 60000, // 60 detik
+
+  set(key, data) {
+    this._store[key] = { data, ts: Date.now() };
+  },
+
+  get(key) {
+    const entry = this._store[key];
+    if (!entry) return null;
+    if (Date.now() - entry.ts > this.TTL) { delete this._store[key]; return null; }
+    return entry.data;
+  },
+
+  clear(key) {
+    if (key) delete this._store[key];
+    else this._store = {};
+  }
+};
+
 /**
  * Kirim request ke GAS API
  * @param {string} action - nama action yang dipanggil
@@ -110,11 +134,21 @@ const Session = {
 const Documents = {
   async getAll(filters = {}) {
     const sessionId = Session.get()?.sessionId;
-    return await callAPI('getDocuments', { filters }, sessionId);
+    // Gunakan cache hanya jika tidak ada filter aktif (tampilan awal)
+    const hasFilter = filters.search || filters.kategori || filters.sortBy;
+    const cacheKey = 'docs_' + JSON.stringify(filters);
+    if (!hasFilter) {
+      const cached = Cache.get(cacheKey);
+      if (cached) return cached;
+    }
+    const result = await callAPI('getDocuments', { filters }, sessionId);
+    if (result.success && !hasFilter) Cache.set(cacheKey, result);
+    return result;
   },
 
   async upload(docData) {
     const sessionId = Session.get()?.sessionId;
+    Cache.clear(); // invalidate cache
     return await callAPI('uploadDocument', { docData }, sessionId);
   },
 
@@ -125,6 +159,7 @@ const Documents = {
 
   async delete(documentId) {
     const sessionId = Session.get()?.sessionId;
+    Cache.clear(); // invalidate cache
     return await callAPI('deleteDocument', { documentId }, sessionId);
   },
 
