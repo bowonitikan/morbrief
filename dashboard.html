@@ -3,9 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Pengarsipan e-dokumen by @eranitikan, mei 2026">
-  <meta name="keywords" content="HTML, CSS, JavaScript">
-  <meta name="author" content="Era Wibowo">  
   <title>Morbrief — Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
@@ -55,6 +52,16 @@
     }
 
     .topbar-brand span { color: var(--gold); }
+
+    .topbar-credit {
+      font-size: 10px;
+      font-weight: 300;
+      color: rgba(201,168,76,0.5);
+      letter-spacing: 0.5px;
+      margin-left: 6px;
+      align-self: flex-end;
+      margin-bottom: 2px;
+    }
 
     .topbar-right {
       display: flex;
@@ -477,7 +484,7 @@
 
 <!-- TOPBAR -->
 <div class="topbar">
-  <div class="topbar-brand">Mor<span>brief</span></div>
+  <div class="topbar-brand" style="display:flex;align-items:baseline;gap:0;">Mor<span>brief</span><span class="topbar-credit">by @erawibowo</span></div>
   <div class="topbar-right">
     <div class="user-chip">
       <span class="user-name" id="topUserName">—</span>
@@ -821,31 +828,51 @@ function viewDoc(id) {
   `;
   document.getElementById('mdDetail').classList.add('open');
 
-  // Jika masih diproses, polling setiap 8 detik
+  // Jika masih diproses, polling setiap 10 detik (max 12x = 2 menit)
   if (isProcessing) {
     let attempts = 0;
+    const PROCESSING_STATES = [
+      'Memproses ringkasan...', 'Tunggu ringkasan...',
+      'Sedang diproses...', '', null, undefined
+    ];
+
     summaryPollTimer = setInterval(async () => {
       attempts++;
-      if (attempts > 10) { clearInterval(summaryPollTimer); return; } // max 80 detik
-      const res = await Documents.getAll({ search: doc.judul });
+      if (attempts > 12) {
+        clearInterval(summaryPollTimer);
+        summaryPollTimer = null;
+        const box = document.getElementById('summaryBox');
+        if (box) box.innerHTML = '<span style="color:var(--muted);font-size:13px;">⚠️ Ringkasan belum selesai. Coba buka kembali dokumen ini dalam 1-2 menit.</span>';
+        return;
+      }
+
+      // Bypass cache saat polling
+      Cache.clear('docs_{}');
+      const sessionId = Session.get()?.sessionId;
+      const res = await callAPI('getDocuments', { filters: { search: doc.judul } }, sessionId);
       if (!res.success) return;
+
       const updated = res.documents.find(d => d.id === id);
       if (!updated) return;
-      const stillProcessing = !updated.ringkasan ||
-        updated.ringkasan === 'Memproses ringkasan...' ||
-        updated.ringkasan === 'Tunggu ringkasan...';
+
+      const stillProcessing = PROCESSING_STATES.includes((updated.ringkasan || '').trim()) ||
+        (updated.ringkasan || '').startsWith('Error');
+
       if (!stillProcessing) {
         clearInterval(summaryPollTimer);
         summaryPollTimer = null;
         const box = document.getElementById('summaryBox');
         if (box) {
+          box.style.transition = 'all 0.4s ease';
           box.innerHTML = esc(updated.ringkasan);
-          // Update cache lokal
-          const idx = allDocs.findIndex(d => d.id === id);
-          if (idx >= 0) allDocs[idx].ringkasan = updated.ringkasan;
+          box.style.background = 'rgba(201,168,76,0.08)';
+          setTimeout(() => { if(box) box.style.background = ''; }, 1500);
         }
+        // Update cache lokal
+        const idx = allDocs.findIndex(d => d.id === id);
+        if (idx >= 0) allDocs[idx].ringkasan = updated.ringkasan;
       }
-    }, 8000);
+    }, 10000);
   }
 }
 

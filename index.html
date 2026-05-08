@@ -94,6 +94,16 @@
       max-width: 280px;
     }
 
+    .brand-credit {
+      display: block;
+      margin-top: 6px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 300;
+      letter-spacing: 1px;
+      color: rgba(201,168,76,0.55);
+    }
+
     .decorative-lines {
       position: relative;
       z-index: 1;
@@ -279,6 +289,7 @@
     <div class="brand">
       <span class="brand-mark">Sistem Manajemen</span>
       <div class="brand-name">Mor<span>brief</span></div>
+      <span class="brand-credit">by @erawibowo</span>
       <p class="tagline">Kurator arsip dokumen PDF dengan ringkasan cerdas berbasis AI.</p>
     </div>
     <div class="decorative-lines">
@@ -322,56 +333,52 @@
     </div>
   </div>
 
-<script>
-  // 1. FUNGSI GLOBAL (Bisa diakses oleh atribut onclick di HTML)
-  async function handleLogin() {
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value.trim();
+  <script>
+    // ===== FUNGSI GLOBAL (bisa dipanggil dari onclick di HTML) =====
 
-    if (!username || !password) {
-      showError('Username dan password wajib diisi');
-      return;
+    async function handleLogin() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+
+      if (!username || !password) {
+        showError('Username dan password wajib diisi');
+        return;
+      }
+
+      setLoading(true);
+      const result = await Auth.login(username, password);
+      setLoading(false);
+
+      if (result.success) {
+        Session.save(result);
+        window.location.href = '/morbrief/dashboard.html';
+      } else {
+        showError(result.message || 'Login gagal. Coba lagi.');
+      }
     }
 
-    setLoading(true);
-
-    const result = await Auth.login(username, password);
-
-    setLoading(false);
-
-    if (result.success) {
-      Session.save(result);
-      window.location.href = '/morbrief/dashboard.html';
-    } else {
-      showError(result.message || 'Login gagal. Coba lagi.');
+    function showError(msg) {
+      const box = document.getElementById('errorBox');
+      box.textContent = msg;
+      box.classList.add('show');
     }
-  }
 
-  function showError(msg) {
-    const box = document.getElementById('errorBox');
-    box.textContent = msg;
-    box.classList.add('show');
-  }
+    function setLoading(loading) {
+      const btn = document.getElementById('loginBtn');
+      const text = document.getElementById('btnText');
+      const dots = document.getElementById('loadingDots');
+      btn.disabled = loading;
+      text.style.display = loading ? 'none' : 'inline';
+      dots.classList.toggle('show', loading);
+    }
 
-  function setLoading(loading) {
-    const btn = document.getElementById('loginBtn');
-    const text = document.getElementById('btnText');
-    const dots = document.getElementById('loadingDots');
-    btn.disabled = loading;
-    text.style.display = loading ? 'none' : 'inline';
-    dots.classList.toggle('show', loading);
-  }
-
-  // 2. INISIALISASI (Dijalankan otomatis setelah halaman dimuat)
-  document.addEventListener('DOMContentLoaded', function () {
-    // Redirect jika sudah login
-    redirectIfLoggedIn();
-
-    // Enter key handler
-    document.getElementById('password').addEventListener('keypress', e => {
-      if (e.key === 'Enter') handleLogin();
+    // ===== INIT: jalankan setelah DOM siap =====
+    document.addEventListener('DOMContentLoaded', function () {
+      redirectIfLoggedIn();
+      document.getElementById('password').addEventListener('keypress', e => {
+        if (e.key === 'Enter') handleLogin();
+      });
     });
-  }); 
-</script>
+  </script>
 </body>
 </html>
