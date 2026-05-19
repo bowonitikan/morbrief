@@ -800,13 +800,15 @@ function viewDoc(id) {
 
   const isProcessing = !doc.ringkasan ||
     doc.ringkasan === 'Memproses ringkasan...' ||
-    doc.ringkasan === 'Tunggu ringkasan...';
+    doc.ringkasan === 'Tunggu ringkasan...' ||
+    doc.ringkasan === 'Sedang diproses...' ||
+    (doc.ringkasan && doc.ringkasan.includes('diproses'));
 
   const ringkasanHtml = isProcessing
-    ? `<div class="summary-card" id="summaryBox">
-        <div style="display:flex;align-items:center;gap:10px;color:var(--muted);">
-          <div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>
-          <span style="font-size:13px;">Ringkasan sedang diproses AI... biasanya 15–30 detik</span>
+    ? `<div class="summary-card" id="summaryBox" style="background:rgba(201,168,76,0.12);border-left:3px solid #f59e0b;">
+        <div style="display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;line-height:1.6;">
+          <div class="spinner" style="width:14px;height:14px;border-width:2px;flex-shrink:0;"></div>
+          <span>⏳ Ringkasan AI sedang diproses (15–30 detik).<br>Sementara itu, buka file PDF di bawah untuk preview isi dokumen.</span>
         </div>
        </div>`
     : `<div class="summary-card" id="summaryBox">${esc(doc.ringkasan)}</div>`;
@@ -822,8 +824,13 @@ function viewDoc(id) {
     <div class="detail-val">${doc.uploader} &nbsp;·&nbsp; ${fmtDate(doc.tanggalUpload)}</div>
     <div class="detail-label">Ringkasan AI</div>
     ${ringkasanHtml}
-    <div style="margin-top:20px">
-      <a href="${doc.fileUrl}" target="_blank" class="btn btn-primary" style="display:inline-block;text-decoration:none;font-size:13px">📥 Buka PDF</a>
+    <div style="margin-top:24px;display:flex;gap:10px;flex-wrap:wrap;">
+      <a href="${doc.fileUrl}" target="_blank" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;font-size:13px;padding:11px 20px;background:var(--ink);color:#fff;border-radius:6px;">
+        <span style="font-size:16px;">📄</span> Buka File PDF
+      </a>
+      ${isProcessing ? `<button class="btn" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;font-size:13px;padding:11px 20px;background:rgba(201,168,76,0.15);color:#8a6b1a;border:none;border-radius:6px;cursor:pointer;" onclick="viewDoc('${doc.id}')">
+        <span style="font-size:14px;">🔄</span> Refresh Ringkasan
+      </button>` : ''}
     </div>
   `;
   document.getElementById('mdDetail').classList.add('open');
