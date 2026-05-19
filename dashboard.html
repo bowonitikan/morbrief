@@ -3,6 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Tools untuk Mengarsip dokumen
+
+(c) @eranitikan mei 2026">
+<meta name="keywords" content="rekam e dokumen, arsip dokumen ">
+<meta name="author" content="QASoft | @eranitikan">
+<meta name="robots" content="index, follow">
+
+  
   <title>Morbrief — Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
@@ -517,6 +525,9 @@
       <button class="nav-item" onclick="filterCat('Surat')"><span class="nav-icon">📮</span> Surat</button>
       <button class="nav-item" onclick="filterCat('Laporan')"><span class="nav-icon">📊</span> Laporan</button>
       <button class="nav-item" onclick="filterCat('Kontrak')"><span class="nav-icon">📝</span> Kontrak</button>
+      <button class="nav-item" onclick="filterCat('Jadwal MOD')"><span class="nav-icon">📅</span> Jadwal MOD</button>
+      <button class="nav-item" onclick="filterCat('MB Report')"><span class="nav-icon">📈</span> MB Report</button>
+      <button class="nav-item" onclick="filterCat('Komiku')"><span class="nav-icon">🎨</span> Komiku</button>
       <button class="nav-item" onclick="filterCat('Lainnya')"><span class="nav-icon">📌</span> Lainnya</button>
     </div>
   </nav>
@@ -539,6 +550,9 @@
           <option value="Surat">Surat</option>
           <option value="Laporan">Laporan</option>
           <option value="Kontrak">Kontrak</option>
+          <option value="Jadwal MOD">Jadwal MOD</option>
+          <option value="MB Report">MB Report</option>
+          <option value="Komiku">Komiku</option>
           <option value="Lainnya">Lainnya</option>
         </select>
         <button class="btn btn-ghost" onclick="loadDocs()">↺ Refresh</button>
@@ -617,8 +631,7 @@
             <label>Kategori</label>
             <select id="upKat">
               <option value="">Pilih kategori...</option>
-              <option>Surat</option><option>Laporan</option>
-              <option>Kontrak</option><option>Lainnya</option>
+<option>Surat</option><option>Laporan</option><option>Kontrak</option><option>Jadwal MOD</option><option>MB Report</option><option>Komiku</option><option>Lainnya</option>
             </select>
           </div>
           <div class="field">
@@ -676,7 +689,7 @@
     <div class="modal-title">Edit Dokumen</div>
     <div class="field"><label>Judul</label><input type="text" id="editJudul"></div>
     <div class="field"><label>Kategori</label>
-      <select id="editKat"><option>Surat</option><option>Laporan</option><option>Kontrak</option><option>Lainnya</option></select>
+      <select id="editKat"><option>Surat</option><option>Laporan</option><option>Kontrak</option><option>Jadwal MOD</option><option>MB Report</option><option>Komiku</option><option>Lainnya</option></select>
     </div>
     <div class="field"><label>Tag</label><input type="text" id="editTag"></div>
     <div class="modal-footer">
