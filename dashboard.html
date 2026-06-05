@@ -3,14 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Tools untuk Mengarsip dokumen
-
-(c) @eranitikan mei 2026">
-<meta name="keywords" content="rekam e dokumen, arsip dokumen ">
-<meta name="author" content="QASoft | @eranitikan">
-<meta name="robots" content="index, follow">
-
-  
   <title>Morbrief — Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
@@ -739,6 +731,45 @@ function goTo(page) {
   const nav = document.getElementById('nav-' + page);
   if (nav) nav.classList.add('active');
   if (page === 'users') loadUsers();
+  if (page === 'upload') setupFileDragDrop();
+}
+
+function setupFileDragDrop() {
+  const fileInput = document.getElementById('upFile');
+  const fileLabel = document.querySelector('label[for="upFile"]');
+  if (!fileInput || !fileLabel) return;
+
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    const fileName = document.getElementById('upFileName');
+    if (file) {
+      fileName.textContent = '✓ ' + file.name + ' (' + Math.round(file.size/1024) + ' KB)';
+    }
+  });
+
+  fileLabel.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    fileLabel.style.borderColor = 'var(--ink)';
+    fileLabel.style.background = 'rgba(201,168,76,0.2)';
+  });
+
+  fileLabel.addEventListener('dragleave', () => {
+    fileLabel.style.borderColor = 'var(--gold)';
+    fileLabel.style.background = 'rgba(201,168,76,0.08)';
+  });
+
+  fileLabel.addEventListener('drop', (e) => {
+    e.preventDefault();
+    fileLabel.style.borderColor = 'var(--gold)';
+    fileLabel.style.background = 'rgba(201,168,76,0.08)';
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      fileInput.files = files;
+      const fileName = document.getElementById('upFileName');
+      const file = files[0];
+      fileName.textContent = '✓ ' + file.name + ' (' + Math.round(file.size/1024) + ' KB)';
+    }
+  });
 }
 
 function filterCat(cat) {
@@ -934,19 +965,96 @@ async function delDoc(id) {
 }
 
 // ===== UPLOAD =====
-async function handleUpload() {
+async function handleUploadFile() {
+  const file = document.getElementById('upFile').files[0];
   const judul = document.getElementById('upJudul').value.trim();
   const kategori = document.getElementById('upKat').value;
   const tag = document.getElementById('upTag').value.trim();
-  const fileUrl = document.getElementById('upUrl').value.trim();
-  if (!judul || !kategori || !fileUrl) { toast('Judul, kategori, dan URL file wajib diisi', 'error'); return; }
-  const res = await Documents.upload({ judul, kategori, tag, fileUrl });
-  if (res.success) {
-    toast('Dokumen berhasil disimpan!', 'success');
-    ['upJudul','upKat','upTag','upUrl'].forEach(id => document.getElementById(id).value = '');
-    goTo('docs'); loadDocs();
-  } else toast(res.message, 'error');
+
+  if (!file) { toast('Pilih file PDF', 'error'); return; }
+  if (!judul || !kategori) { toast('Judul dan kategori wajib diisi', 'error'); return; }
+  if (file.type !== 'application/pdf') { toast('Hanya file PDF yang diperbolehkan', 'error'); return; }
+  if (file.size > 50 * 1024 * 1024) { toast('File terlalu besar (max 50MB)', 'error'); return; }
+
+  showUploadStatus('Mengunggah file ke Google Drive...', 'loading');
+
+  // Baca file sebagai base64
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const base64 = e.target.result.split(',')[1];
+    const res = await Documents.uploadFile(file.name, base64, judul, kategori, tag);
+
+    if (res.success) {
+      showUploadStatus('✅ Upload berhasil! Ringkasan sedang diproses...', 'success');
+      setTimeout(() => {
+        ['upFile','upJudul','upKat','upTag'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el.type === 'file') el.value = '';
+          else el.value = '';
+        });
+        document.getElementById('upFileName').textContent = '';
+        goTo('docs');
+        loadDocs();
+      }, 2000);
+    } else {
+      showUploadStatus('❌ ' + res.message, 'error');
+    }
+  };
+  reader.readAsDataURL(file);
 }
+
+function showUploadStatus(msg, type) {
+  const el = document.getElementById('upStatus');
+  el.innerHTML = `<div style="padding:12px;border-radius:6px;font-size:13px;margin-bottom:8px;${
+    type === 'loading' ? 'background:rgba(201,168,76,0.15);color:var(--ink);' :
+    type === 'success' ? 'background:rgba(34,197,94,0.15);color:#166534;' :
+    'background:rgba(220,38,38,0.15);color:#991b1b;'
+  }"><span style="display:inline-block;margin-right:8px;">${
+    type === 'loading' ? '⏳' :
+    type === 'success' ? '✅' :
+    '❌'
+  }</span>${msg}</div>`;
+}
+
+// Setup drag-drop
+document.addEventListener('DOMContentLoaded', () => {
+  const fileInput = document.getElementById('upFile');
+  const fileLabel = document.querySelector('label[for="upFile"]');
+
+  if (!fileInput || !fileLabel) return;
+
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    const fileName = document.getElementById('upFileName');
+    if (file) {
+      fileName.textContent = '✓ ' + file.name + ' (' + Math.round(file.size/1024) + ' KB)';
+    }
+  });
+
+  fileLabel.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    fileLabel.style.borderColor = 'var(--ink)';
+    fileLabel.style.background = 'rgba(201,168,76,0.2)';
+  });
+
+  fileLabel.addEventListener('dragleave', () => {
+    fileLabel.style.borderColor = 'var(--gold)';
+    fileLabel.style.background = 'rgba(201,168,76,0.08)';
+  });
+
+  fileLabel.addEventListener('drop', (e) => {
+    e.preventDefault();
+    fileLabel.style.borderColor = 'var(--gold)';
+    fileLabel.style.background = 'rgba(201,168,76,0.08)';
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      fileInput.files = files;
+      const fileName = document.getElementById('upFileName');
+      const file = files[0];
+      fileName.textContent = '✓ ' + file.name + ' (' + Math.round(file.size/1024) + ' KB)';
+    }
+  });
+})
 
 // ===== USERS =====
 async function loadUsers() {
