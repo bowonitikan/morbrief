@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Morbrief - Sistem Manajemen & Ringkasan Arsip AI</title>
+    <script>
+      (function() {
+        function isFrameError(msg) {
+          if (!msg) return false;
+          var str = String(msg).toLowerCase();
+          return (
+            str.indexOf("blocked a frame") !== -1 ||
+            str.indexOf("origin from 'location'") !== -1 ||
+            str.indexOf("property 'origin' from 'location'") !== -1 ||
+            str.indexOf("cross-origin") !== -1 ||
+            str.indexOf("location") !== -1 ||
+            str.indexOf("origin") !== -1 ||
+            str.indexOf("metamask") !== -1 ||
+            str.indexOf("ethereum") !== -1 ||
+            str.indexOf("failed to connect") !== -1
+          );
+        }
+
+        // Intercept console.error and console.warn to suppress frame-related location errors
+        var originalConsoleError = console.error;
+        console.error = function() {
+          var msg = Array.prototype.slice.call(arguments).map(function(arg) {
+            try { return String(arg); } catch(e) { return ""; }
+          }).join(" ");
+          if (isFrameError(msg)) {
+            return;
+          }
+          originalConsoleError.apply(console, arguments);
+        };
+
+        var originalConsoleWarn = console.warn;
+        console.warn = function() {
+          var msg = Array.prototype.slice.call(arguments).map(function(arg) {
+            try { return String(arg); } catch(e) { return ""; }
+          }).join(" ");
+          if (isFrameError(msg)) {
+            return;
+          }
+          originalConsoleWarn.apply(console, arguments);
+        };
+        
+        var originalOnError = window.onerror;
+        window.onerror = function(message, source, lineno, colno, error) {
+          var msg = message || "";
+          if (error && error.message) msg += " " + error.message;
+          if (error) msg += " " + String(error);
+          if (isFrameError(msg)) {
+            return true;
+          }
+          if (originalOnError) {
+            return originalOnError.apply(this, arguments);
+          }
+          return false;
+        };
+
+        window.addEventListener("error", function(event) {
+          var msg = event.message || "";
+          if (event.error && event.error.message) msg += " " + event.error.message;
+          if (event.error) msg += " " + String(event.error);
+          if (isFrameError(msg)) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }, true);
+
+        window.addEventListener("unhandledrejection", function(event) {
+          var msg = "";
+          if (event.reason) {
+            msg += (event.reason.message || "") + " " + String(event.reason);
+          }
+          if (isFrameError(msg)) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }, true);
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
