@@ -1,15 +1,15 @@
 // ============================================
 // js/api.js
-// Modul komunikasi ke Google Apps Script API
-// Digunakan oleh semua halaman di GitHub Pages
+// Modul komunikasi ke Express Server / Google Apps Script API
+// Digunakan oleh seluruh halaman Morbrief
 // ============================================
 
-// ⚠️ GANTI dengan URL deployment GAS Anda
-// Dapatkan dari: GAS Editor → Deploy → Manage Deployments → URL
+// Secara default, arahkan ke backend server Express lokal jika berjalan pada platform ini,
+// atau timpa dengan URL deployment Google Apps Script Anda jika dideploy mandiri di GAS.
 const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbx9qIISf9ePbSjCkaSZYUtEI_WyHg9vUjE5kOAdPNVMSiCOj1_4o7rcbTEd3FOjwFh6/exec';
 
 // ============================================
-// CACHE LOKAL - kurangi pemanggilan ke GAS
+// CACHE LOKAL - kurangi pemanggilan ke REST/GAS
 // ============================================
 const Cache = {
   _store: {},
@@ -33,27 +33,99 @@ const Cache = {
 };
 
 /**
- * Kirim request ke GAS API
+ * Kirim request ke API Server
  * @param {string} action - nama action yang dipanggil
  * @param {object} payload - data tambahan
- * @param {string|null} sessionId - session token (null jika belum login)
+ * @param {string|null} sessionId - session token
  */
 async function callAPI(action, payload = {}, sessionId = null) {
-  const body = { action, payload };
-  if (sessionId) body.sessionId = sessionId;
+  const isExternalGAS = typeof GAS_API_URL !== 'undefined' && GAS_API_URL && (GAS_API_URL.startsWith('http://') || GAS_API_URL.startsWith('https://'));
+  
+  let url;
+  let body;
+  
+  if (isExternalGAS) {
+    url = GAS_API_URL;
+    // Standard Google Apps Script doPost JSON format
+    let gasPayload = { ...payload };
+    
+    // Khusus untuk uploadDocumentFile di GAS agar mendatangkan parameter yang sesuai dengan Code_Hybrid.gs
+    if (action === 'uploadDocumentFile') {
+      gasPayload = {
+        fileName: payload.fileName,
+        fileData: payload.fileData,
+        judul: payload.judul,
+        kategori: payload.kategori,
+        tag: payload.tag
+      };
+    }
+    
+    body = {
+      action: action,
+      payload: gasPayload,
+      sessionId: sessionId
+    };
+  } else {
+    // Hubungkan aksi GAS legacy langsung ke RESTful endpoints Node.js Express kita
+    url = '/api/' + action;
+    body = {};
+
+    if (action === 'getDocuments') {
+      body = { filters: payload.filters || {}, sessionId };
+    } else if (action === 'uploadDocument') {
+      body = { docData: payload.docData, sessionId };
+    } else if (action === 'uploadDocumentFile') {
+      // Konversi aksi fileupload GAS legacy menjadi format standard REST kami
+      url = '/api/uploadDocument';
+      body = {
+        docData: {
+          judul: payload.judul,
+          kategori: payload.kategori,
+          tag: payload.tag,
+          fileName: payload.fileName,
+          fileContentBase64: payload.fileData,
+          fileMimeType: 'application/pdf',
+          fileSize: Math.round((payload.fileData || '').length * 0.75)
+        },
+        sessionId
+      };
+    } else if (action === 'updateDocument') {
+      body = { documentId: payload.documentId, updateData: payload.updateData, sessionId };
+    } else if (action === 'deleteDocument') {
+      body = { documentId: payload.documentId, sessionId };
+    } else if (action === 'getUsers') {
+      body = { sessionId };
+    } else if (action === 'addUser') {
+      body = {
+        username: payload.username,
+        password: payload.password,
+        peran: payload.peran,
+        namaLengkap: payload.namaLengkap,
+        sessionId
+      };
+    } else if (action === 'deleteUser') {
+      body = { username: payload.username, sessionId };
+    } else {
+      body = { ...payload, sessionId };
+    }
+  }
 
   try {
-    const response = await fetch(GAS_API_URL, {
+    const headers = { 
+      'Content-Type': 'application/json'
+    };
+    if (!isExternalGAS) {
+      headers['x-session-id'] = sessionId || '';
+    }
+    
+    const response = await fetch(url, {
       method: 'POST',
-      // GAS tidak support preflight CORS, gunakan no-cors untuk non-JSON
-      // Tapi kita butuh response, jadi gunakan mode 'cors' dengan redirect
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain' }, // ← PENTING: GAS butuh text/plain
+      headers: headers,
       body: JSON.stringify(body)
     });
 
     if (!response.ok) {
-      throw new Error('HTTP error: ' + response.status);
+      throw new Error('Gagal memproses permintaan HTTP: ' + response.status);
     }
 
     const data = await response.json();
@@ -61,7 +133,7 @@ async function callAPI(action, payload = {}, sessionId = null) {
 
   } catch (err) {
     console.error('API Error [' + action + ']:', err);
-    return { success: false, message: 'Gagal menghubungi server: ' + err.message };
+    return { success: false, message: 'Gagal menghubungi server Morbrief: ' + err.message };
   }
 }
 
@@ -106,7 +178,7 @@ const Session = {
     const raw = localStorage.getItem(this.KEY);
     if (!raw) return null;
     const data = JSON.parse(raw);
-    // Cek expired di client (1 jam)
+    // Masa aktif sesi: 1 jam kedaluwarsa di klien
     if (Date.now() - data.savedAt > 3600000) {
       this.clear();
       return null;
@@ -134,7 +206,6 @@ const Session = {
 const Documents = {
   async getAll(filters = {}) {
     const sessionId = Session.get()?.sessionId;
-    // Gunakan cache hanya jika tidak ada filter aktif (tampilan awal)
     const hasFilter = filters.search || filters.kategori || filters.sortBy;
     const cacheKey = 'docs_' + JSON.stringify(filters);
     if (!hasFilter) {
@@ -148,7 +219,7 @@ const Documents = {
 
   async upload(docData) {
     const sessionId = Session.get()?.sessionId;
-    Cache.clear(); // invalidate cache
+    Cache.clear();
     return await callAPI('uploadDocument', { docData }, sessionId);
   },
 
@@ -167,7 +238,7 @@ const Documents = {
 
   async delete(documentId) {
     const sessionId = Session.get()?.sessionId;
-    Cache.clear(); // invalidate cache
+    Cache.clear();
     return await callAPI('deleteDocument', { documentId }, sessionId);
   },
 
@@ -199,14 +270,13 @@ const Users = {
 };
 
 // ============================================
-// GUARD: Redirect ke login jika belum login
-// Panggil di awal setiap halaman yang butuh auth
+// GUARD: Otomatisasi rute terproteksi
 // ============================================
 
 function requireAuth(allowedRoles = null) {
   const session = Session.get();
   if (!session) {
-    window.location.href = '/morbrief/index.html';
+    window.location.href = '/index.html';
     return false;
   }
   if (allowedRoles && !allowedRoles.includes(session.peran)) {
@@ -216,9 +286,6 @@ function requireAuth(allowedRoles = null) {
   return true;
 }
 
-/**
- * Redirect ke dashboard jika sudah login (untuk halaman login)
- */
 function redirectIfLoggedIn() {
   if (Session.isLoggedIn()) {
     window.location.href = '/morbrief/dashboard.html';
