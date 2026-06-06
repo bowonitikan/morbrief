@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Morbrief — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <!-- Suppress cross-origin iframes & metamask noise locally -->
+  <script>
+    (function() {
+      function isFrameError(msg) {
+        if (!msg) return false;
+        var str = String(msg).toLowerCase();
+        return (
+          str.indexOf("blocked a frame") !== -1 ||
+          str.indexOf("origin from 'location'") !== -1 ||
+          str.indexOf("property 'origin' from 'location'") !== -1 ||
+          str.indexOf("cross-origin") !== -1 ||
+          str.indexOf("location") !== -1 ||
+          str.indexOf("origin") !== -1 ||
+          str.indexOf("metamask") !== -1 ||
+          str.indexOf("ethereum") !== -1 ||
+          str.indexOf("failed to connect") !== -1
+        );
+      }
+
+      // Intercept console.error and console.warn to suppress frame-related location errors
+      var originalConsoleError = console.error;
+      console.error = function() {
+        var msg = Array.prototype.slice.call(arguments).map(function(arg) {
+          try { return String(arg); } catch(e) { return ""; }
+        }).join(" ");
+        if (isFrameError(msg)) {
+          return;
+        }
+        originalConsoleError.apply(console, arguments);
+      };
+
+      var originalConsoleWarn = console.warn;
+      console.warn = function() {
+        var msg = Array.prototype.slice.call(arguments).map(function(arg) {
+          try { return String(arg); } catch(e) { return ""; }
+        }).join(" ");
+        if (isFrameError(msg)) {
+          return;
+        }
+        originalConsoleWarn.apply(console, arguments);
+      };
+
+      window.onerror = function(message, source, lineno, colno, error) {
+        var msg = message || "";
+        if (error && error.message) msg += " " + error.message;
+        if (error) msg += " " + String(error);
+        if (isFrameError(msg)) return true;
+        return false;
+      };
+      window.addEventListener("error", function(event) {
+        var msg = event.message || "";
+        if (event.error && event.error.message) msg += " " + event.error.message;
+        if (event.error) msg += " " + String(event.error);
+        if (isFrameError(msg)) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }, true);
+      window.addEventListener("unhandledrejection", function(event) {
+        var msg = "";
+        if (event.reason) {
+          msg += (event.reason.message || "") + " " + String(event.reason);
+        }
+        if (isFrameError(msg)) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }, true);
+    })();
+  </script>
+  <!-- api.js dimuat di head agar Session & requireAuth tersedia saat DOM siap -->
+  <script src="../js/api.js"></script>
+  <style>
+    :root {
+      --ink: #1a1a2e;
+      --paper: #f5f0e8;
+      --gold: #c9a84c;
+      --gold-light: #e8d5a3;
+      --rust: #8b3a2a;
+      --muted: #7a7265;
+      --border: rgba(26,26,46,0.12);
+      --sidebar-w: 230px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ===== TOPBAR ===== */
+    .topbar {
+      background: var(--ink);
+      padding: 0 30px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .topbar-brand {
+      font-family: 'DM Serif Display', serif;
+      font-size: 20px;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    .topbar-brand span { color: var(--gold); }
+
+    .topbar-credit {
+      font-size: 10px;
+      font-weight: 300;
+      color: rgba(201,168,76,0.5);
+      letter-spacing: 0.5px;
+      margin-left: 6px;
+      align-self: flex-end;
+      margin-bottom: 2px;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .user-chip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+
+    .user-name { color: rgba(255,255,255,0.8); }
+
+    .role-badge {
+      background: rgba(201,168,76,0.2);
+      color: var(--gold);
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .btn-out {
+      background: none;
+      border: 1px solid rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.6);
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-out:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* ===== LAYOUT ===== */
+    .app-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: #fff;
+      border-right: 1px solid var(--border);
+      padding: 30px 0;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    .nav-section {
+      padding: 0 20px;
+      margin-bottom: 8px;
+    }
+
+    .nav-section-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+      padding: 0 10px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--muted);
+      transition: all 0.2s;
+      margin-bottom: 2px;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+    }
+
+    .nav-item:hover { background: var(--paper); color: var(--ink); }
+    .nav-item.active { background: var(--ink); color: #fff; }
+    .nav-item.active .nav-icon { opacity: 1; }
+
+    .nav-icon { font-size: 15px; }
+
+    .nav-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 20px;
+    }
+
+    /* ===== MAIN CONTENT ===== */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 36px 40px;
+    }
+
+    .page { display: none; }
+    .page.active { display: block; animation: fadeUp 0.25s ease; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== PAGE HEADER ===== */
+    .page-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 32px;
+      color: var(--ink);
+      margin-bottom: 6px;
+    }
+
+    .page-sub { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
+
+    /* ===== TOOLBAR ===== */
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .search-wrap {
+      flex: 1;
+      min-width: 200px;
+      position: relative;
+    }
+
+    .search-wrap input {
+      width: 100%;
+      padding: 10px 14px 10px 36px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-wrap input:focus { border-color: var(--gold); }
+
+    .search-icon {
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    select.filter {
+      padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+      cursor: pointer;
+    }
+
+    select.filter:focus { border-color: var(--gold); }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+
+    .btn-primary { background: var(--ink); color: #fff; }
+    .btn-primary:hover { background: #2d2d4a; }
+    .btn-ghost {
+      background: none;
+      border: 1.5px solid var(--border);
+      color: var(--muted);
+    }
+    .btn-ghost:hover { border-color: var(--ink); color: var(--ink); }
+
+    /* ===== TABLE ===== */
+    .table-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+    thead th {
+      padding: 14px 16px;
+      text-align: left;
+      font-weight: 500;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+      background: #fafafa;
+    }
+
+    thead th:hover { color: var(--ink); }
+
+    tbody td {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(26,26,46,0.06);
+      vertical-align: middle;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: rgba(245,240,232,0.5); }
+
+    .doc-title { font-weight: 500; color: var(--ink); }
+    .doc-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .badge-gold { background: rgba(201,168,76,0.15); color: #8a6b1a; }
+    .badge-blue { background: rgba(59,130,246,0.1); color: #1e40af; }
+    .badge-green { background: rgba(16,185,129,0.1); color: #065f46; }
+    .badge-muted { background: rgba(122,114,101,0.1); color: var(--muted); }
+
+    .action-row { display: flex; gap: 6px; align-items: center; }
+
+    .btn-xs {
+      padding: 5px 10px;
+      border: none;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+    }
+
+    .btn-xs-view { background: rgba(26,26,46,0.06); color: var(--ink); }
+    .btn-xs-view:hover { background: var(--ink); color: #fff; }
+    .btn-xs-edit { background: rgba(201,168,76,0.1); color: #8a6b1a; }
+    .btn-xs-edit:hover { background: var(--gold); color: #fff; }
+    .btn-xs-del { background: rgba(139,58,42,0.08); color: var(--rust); }
+    .btn-xs-del:hover { background: var(--rust); color: #fff; }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .empty-state p { font-size: 14px; margin-top: 8px; }
+
+    /* ===== MODAL ===== */
+    .overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(26,26,46,0.5);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .overlay.open { display: flex; }
+
+    .modal {
+      background: #fff;
+      border-radius: 12px;
+      padding: 36px;
+      width: 90%;
+      max-width: 520px;
+      max-height: 85vh;
+      overflow-y: auto;
+      animation: modalIn 0.2s ease;
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.96) translateY(8px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .modal-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 22px;
+      margin-bottom: 24px;
+    }
+
+    .field { margin-bottom: 20px; }
+
+    .field label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .field input, .field select, .field textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: var(--ink);
+      background: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus { border-color: var(--gold); }
+
+    .field textarea { resize: vertical; min-height: 80px; }
+
+    .modal-footer {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Detail doc */
+    .detail-label {
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .detail-val {
+      font-size: 14px;
+      color: var(--ink);
+      margin-bottom: 18px;
+      line-height: 1.5;
+    }
+
+    .summary-card {
+      background: var(--paper);
+      border-left: 3px solid var(--gold);
+      padding: 16px;
+      border-radius: 0 6px 6px 0;
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--ink);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 30px; right: 30px;
+      background: var(--ink);
+      color: #fff;
+      padding: 14px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      z-index: 999;
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all 0.3s;
+    }
+
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.success { border-left: 3px solid var(--gold); }
+    .toast.error { border-left: 3px solid var(--rust); }
+
+    /* Spinner */
+    .spinner {
+      border: 3px solid var(--border);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      width: 20px; height: 20px;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      .app-body { flex-direction: column; }
+      .sidebar { width: 100%; display: flex; flex-wrap: nowrap; overflow-x: auto; padding: 10px 0; height: auto; }
+      .nav-section { display: flex; flex-direction: row; gap: 4px; margin-bottom: 0; }
+      .nav-section-label, .nav-divider { display: none; }
+      .nav-item { white-space: nowrap; padding: 8px 14px; }
+      .main { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-brand" style="display:flex;align-items:baseline;gap:0;">Mor<span>brief</span><span class="topbar-credit">by @erawibowo</span></div>
+  <div class="topbar-right">
+    <div class="user-chip">
+      <span class="user-name" id="topUserName">—</span>
+      <span class="role-badge" id="topUserRole">—</span>
+    </div>
+    <button class="btn-out" onclick="handleLogout()">Keluar</button>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="app-body">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="nav-section">
+      <div class="nav-section-label">Menu</div>
+      <button class="nav-item active" id="nav-docs" onclick="goTo('docs')">
+        <span class="nav-icon">📄</span> Dokumen
+      </button>
+      <button class="nav-item" id="nav-upload" onclick="goTo('upload')" style="display:none">
+        <span class="nav-icon">📤</span> Upload
+      </button>
+      <button class="nav-item" id="nav-users" onclick="goTo('users')" style="display:none">
+        <span class="nav-icon">👥</span> Pengguna
+      </button>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-section">
+      <div class="nav-section-label">Kategori</div>
+      <button class="nav-item" onclick="filterCat('Surat')"><span class="nav-icon">📮</span> Surat</button>
+      <button class="nav-item" onclick="filterCat('Laporan')"><span class="nav-icon">📊</span> Laporan</button>
+      <button class="nav-item" onclick="filterCat('Kontrak')"><span class="nav-icon">📝</span> Kontrak</button>
+      <button class="nav-item" onclick="filterCat('Jadwal MOD')"><span class="nav-icon">📅</span> Jadwal MOD</button>
+      <button class="nav-item" onclick="filterCat('MB Report')"><span class="nav-icon">📈</span> MB Report</button>
+      <button class="nav-item" onclick="filterCat('Komiku')"><span class="nav-icon">🎨</span> Komiku</button>
+      <button class="nav-item" onclick="filterCat('Lainnya')"><span class="nav-icon">📌</span> Lainnya</button>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- PAGE: DOKUMEN -->
+    <div id="page-docs" class="page active">
+      <h1 class="page-title">Arsip Dokumen</h1>
+      <p class="page-sub">Telusuri dan kelola dokumen PDF</p>
+
+      <div class="toolbar">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="searchInput" placeholder="Cari judul, ringkasan, tag...">
+        </div>
+        <select class="filter" id="catFilter">
+          <option value="">Semua Kategori</option>
+          <option value="Surat">Surat</option>
+          <option value="Laporan">Laporan</option>
+          <option value="Kontrak">Kontrak</option>
+          <option value="Jadwal MOD">Jadwal MOD</option>
+          <option value="MB Report">MB Report</option>
+          <option value="Komiku">Komiku</option>
+          <option value="Lainnya">Lainnya</option>
+        </select>
+        <button class="btn btn-ghost" onclick="loadDocs()">↺ Refresh</button>
+        <button class="btn btn-primary" id="btnUpload" onclick="goTo('upload')" style="display:none">+ Upload</button>
+      </div>
+
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="sortBy('judul')">Judul ↕</th>
+              <th onclick="sortBy('kategori')">Kategori ↕</th>
+              <th onclick="sortBy('tanggalUpload')">Tanggal ↕</th>
+              <th onclick="sortBy('uploader')">Uploader ↕</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="docsBody"></tbody>
+        </table>
+        <div id="emptyDocs" class="empty-state" style="display:none">
+          <div style="font-size:40px">📭</div>
+          <p>Tidak ada dokumen ditemukan</p>
+        </div>
+        <div id="loadingDocs" class="empty-state">
+          <div class="spinner"></div>
+          <p style="margin-top:12px">Memuat dokumen...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: UPLOAD -->
+    <div id="page-upload" class="page">
+      <h1 class="page-title">Upload Dokumen</h1>
+      <p class="page-sub">Tambah dokumen baru ke sistem arsip cerdas</p>
+
+      <div style="max-width:560px;">
+
+        <!-- STATUS DISPLAY -->
+        <div id="upStatus"></div>
+
+        <!-- FORM PENGUNGGAHAN -->
+        <div style="background:#fff; border:1px solid var(--border); border-radius:10px; padding:24px;">
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+            <div style="background:var(--ink); color:#fff; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; flex-shrink:0;">✓</div>
+            <div>
+              <div style="font-weight:600; font-size:14px;">Detail Informasi Dokumen</div>
+              <div style="font-size:12px; color:var(--muted);">Silakan unggah dokumen langsung atau paste link Drive</div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Metode A: Unggah Berkas PDF (Langsung/Ekstra Cepat)</label>
+            <label for="upFile" style="display:block; border:2px dashed var(--gold); background:rgba(201,168,76,0.06); border-radius:8px; padding:20px; text-align:center; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s;">
+              <span style="font-size:24px; display:block; margin-bottom:4px;">📤</span>
+              <strong style="font-size:13px; color:var(--ink);" id="upFileName">Pilih berkas PDF atau seret ke sini</strong>
+              <span style="display:block; font-size:11px; color:var(--muted); margin-top:2px;">Ukuran berkas maks. 50MB</span>
+            </label>
+            <input type="file" id="upFile" accept="application/pdf" style="display:none">
+          </div>
+
+          <div style="text-align:center; margin:12px 0; font-size:11px; letter-spacing:1px; color:var(--muted); font-weight:700;">ATAU</div>
+
+          <div class="field">
+            <label>Metode B: Melalui Link Google Drive (Tautan Eksternal)</label>
+            <input type="url" id="upUrl" placeholder="https://drive.google.com/file/d/.../view">
+          </div>
+
+          <div class="field">
+            <label>Judul Dokumen</label>
+            <input type="text" id="upJudul" placeholder="Masukkan judul arsip">
+          </div>
+
+          <div class="field">
+            <label>Kategori</label>
+            <select id="upKat">
+              <option value="">Pilih kategori...</option>
+              <option>Surat</option>
+              <option>Laporan</option>
+              <option>Kontrak</option>
+              <option>Jadwal MOD</option>
+              <option>MB Report</option>
+              <option>Komiku</option>
+              <option>Lainnya</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Tag <span style="font-weight:400;color:var(--muted)">(pisahkan dengan koma)</span></label>
+            <input type="text" id="upTag" placeholder="contoh: penting, laporan, keuangan">
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:8px;">
+            <button class="btn btn-ghost" onclick="goTo('docs')">Batal</button>
+            <!-- Di sini handleUpload diikat sempurna dengan fungsi kita -->
+            <button class="btn btn-primary" id="btnSimpan" onclick="handleUpload()">💾 Simpan Dokumen</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- PAGE: PENGGUNA -->
+    <div id="page-users" class="page">
+      <h1 class="page-title">Manajemen Pengguna</h1>
+      <p class="page-sub">Kelola akun admin, era, dan operator</p>
+
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="openAddUser()">+ Tambah Pengguna</button>
+      </div>
+
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Username</th><th>Nama</th><th>Peran</th>
+              <th>Status</th><th>Dibuat</th><th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="usersBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL: Detail Dokumen -->
+<div class="overlay" id="mdDetail">
+  <div class="modal">
+    <div class="modal-title">Detail Dokumen</div>
+    <div id="detailContent"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('mdDetail')">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Edit Dokumen -->
+<div class="overlay" id="mdEdit">
+  <div class="modal">
+    <div class="modal-title">Edit Dokumen</div>
+    <div class="field"><label>Judul</label><input type="text" id="editJudul"></div>
+    <div class="field"><label>Kategori</label>
+      <select id="editKat"><option>Surat</option><option>Laporan</option><option>Kontrak</option><option>Jadwal MOD</option><option>MB Report</option><option>Komiku</option><option>Lainnya</option></select>
+    </div>
+    <div class="field"><label>Tag</label><input type="text" id="editTag"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('mdEdit')">Batal</button>
+      <button class="btn btn-primary" onclick="submitEdit()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Tambah User -->
+<div class="overlay" id="mdAddUser">
+  <div class="modal">
+    <div class="modal-title">Tambah Pengguna</div>
+    <div class="field"><label>Username</label><input type="text" id="newUsr"></div>
+    <div class="field"><label>Password (kosongkan = otomatis)</label><input type="password" id="newPwd"></div>
+    <div class="field"><label>Nama Lengkap</label><input type="text" id="newName"></div>
+    <div class="field"><label>Peran</label>
+      <select id="newRole">
+        <option value="admin">Admin</option>
+        <option value="era">Era (Pembaca)</option>
+        <option value="operator">Operator</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('mdAddUser')">Batal</button>
+      <button class="btn btn-primary" onclick="submitAddUser()">Buat Pengguna</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== VARIABEL GLOBAL =====
+let allDocs = [];
+let currentSort = { field: 'tanggalUpload', asc: false };
+let editDocId = null;
+let session = null;
+let role = null;
+
+// ===== NAVIGASI =====
+function goTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  const nav = document.getElementById('nav-' + page);
+  if (nav) nav.classList.add('active');
+  if (page === 'users') loadUsers();
+  if (page === 'upload') setupFileDragDrop();
+}
+
+function setupFileDragDrop() {
+  const fileInput = document.getElementById('upFile');
+  const fileLabel = document.querySelector('label[for="upFile"]');
+  if (!fileInput || !fileLabel) return;
+
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    const fileName = document.getElementById('upFileName');
+    if (file) {
+      fileName.textContent = '✓ ' + file.name + ' (' + Math.round(file.size/1024) + ' KB)';
+      // Autofill title if empty
+      const upJudul = document.getElementById('upJudul');
+      if (upJudul && !upJudul.value.trim()) {
+        const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+        upJudul.value = nameWithoutExt.replace(/[-_]/g, ' ');
+      }
+    }
+  });
+
+  fileLabel.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    fileLabel.style.borderColor = 'var(--ink)';
+    fileLabel.style.background = 'rgba(201,168,76,0.2)';
+  });
+
+  fileLabel.addEventListener('dragleave', () => {
+    fileLabel.style.borderColor = 'var(--gold)';
+    fileLabel.style.background = 'rgba(201,168,76,0.06)';
+  });
+
+  fileLabel.addEventListener('drop', (e) => {
+    e.preventDefault();
+    fileLabel.style.borderColor = 'var(--gold)';
+    fileLabel.style.background = 'rgba(201,168,76,0.06)';
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      fileInput.files = files;
+      const fileName = document.getElementById('upFileName');
+      const file = files[0];
+      fileName.textContent = '✓ ' + file.name + ' (' + Math.round(file.size/1024) + ' KB)';
+      
+      const upJudul = document.getElementById('upJudul');
+      if (upJudul && !upJudul.value.trim()) {
+        const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+        upJudul.value = nameWithoutExt.replace(/[-_]/g, ' ');
+      }
+    }
+  });
+}
+
+function filterCat(cat) {
+  document.getElementById('catFilter').value = cat;
+  loadDocs();
+}
+
+function sortBy(field) {
+  if (currentSort.field === field) currentSort.asc = !currentSort.asc;
+  else { currentSort.field = field; currentSort.asc = true; }
+  loadDocs();
+}
+
+// ===== DOKUMEN =====
+async function loadDocs() {
+  showLoading(true);
+  const filters = {
+    search: document.getElementById('searchInput').value,
+    kategori: document.getElementById('catFilter').value || undefined,
+    sortBy: currentSort.field,
+    ascending: currentSort.asc
+  };
+  const res = await Documents.getAll(filters);
+  showLoading(false);
+  if (res.success) { 
+    allDocs = res.documents; 
+    renderDocs(allDocs); 
+  } else {
+    toast('Gagal memuat: ' + res.message, 'error');
+  }
+}
+
+function renderDocs(docs) {
+  const tbody = document.getElementById('docsBody');
+  const empty = document.getElementById('emptyDocs');
+  if (!docs || docs.length === 0) {
+    tbody.innerHTML = ''; empty.style.display = 'block'; return;
+  }
+  empty.style.display = 'none';
+  tbody.innerHTML = docs.map(doc => `
+    <tr>
+      <td>
+        <div class="doc-title">${esc(doc.judul)}</div>
+        <div class="doc-meta">${esc(doc.tag || '')}</div>
+      </td>
+      <td><span class="badge badge-gold">${doc.kategori}</span></td>
+      <td style="color:var(--muted);font-size:12px">${fmtDate(doc.tanggalUpload)}</td>
+      <td style="font-size:12px;color:var(--muted)">${doc.uploader}</td>
+      <td>
+        <div class="action-row">
+          <button class="btn-xs btn-xs-view" onclick="viewDoc('${doc.id}')">Lihat</button>
+          ${canEdit(doc) ? `<button class="btn-xs btn-xs-edit" onclick="editDoc('${doc.id}')">Edit</button>` : ''}
+          ${role === 'admin' ? `<button class="btn-xs btn-xs-del" onclick="delDoc('${doc.id}')">Hapus</button>` : ''}
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function canEdit(doc) {
+  return role === 'admin' || (role === 'operator' && doc.uploader === session.username);
+}
+
+function showLoading(show) {
+  document.getElementById('loadingDocs').style.display = show ? 'block' : 'none';
+}
+
+let summaryPollTimer = null;
+
+function viewDoc(id) {
+  const doc = allDocs.find(d => d.id === id);
+  if (!doc) return;
+
+  // Stop polling sebelumnya jika ada
+  if (summaryPollTimer) { clearInterval(summaryPollTimer); summaryPollTimer = null; }
+
+  const isProcessing = !doc.ringkasan ||
+    doc.ringkasan === 'Memproses ringkasan...' ||
+    doc.ringkasan === 'Tunggu ringkasan...' ||
+    doc.ringkasan === 'Sedang diproses...' ||
+    (doc.ringkasan && doc.ringkasan.includes('diproses'));
+
+  const ringkasanHtml = isProcessing
+    ? `<div class="summary-card" id="summaryBox" style="background:rgba(201,168,76,0.12);border-left:3px solid #f59e0b;">
+        <div style="display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;line-height:1.6;">
+          <div class="spinner" style="width:14px;height:14px;border-width:2px;flex-shrink:0;"></div>
+          <span>⏳ Ringkasan AI sedang diproses (15–30 detik).<br>Sementara itu, buka file berkas di bawah untuk preview isi dokumen.</span>
+        </div>
+       </div>`
+    : `<div class="summary-card" id="summaryBox">${esc(doc.ringkasan)}</div>`;
+
+  document.getElementById('detailContent').innerHTML = `
+    <div class="detail-label">Judul</div>
+    <div class="detail-val">${esc(doc.judul)}</div>
+    <div class="detail-label">Kategori</div>
+    <div class="detail-val"><span class="badge badge-gold">${doc.kategori}</span></div>
+    <div class="detail-label">Tag</div>
+    <div class="detail-val">${esc(doc.tag || '—')}</div>
+    <div class="detail-label">Uploader</div>
+    <div class="detail-val">${doc.uploader} &nbsp;·&nbsp; ${fmtDate(doc.tanggalUpload)}</div>
+    <div class="detail-label">Ringkasan AI</div>
+    ${ringkasanHtml}
+    <div style="margin-top:24px;display:flex;gap:10px;flex-wrap:wrap;">
+      <a href="${doc.fileUrl}" target="_blank" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;font-size:13px;padding:11px 20px;background:var(--ink);color:#fff;border-radius:6px;">
+        <span style="font-size:16px;">📄</span> Buka File Berkas
+      </a>
+      ${isProcessing ? `<button class="btn" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;font-size:13px;padding:11px 20px;background:rgba(201,168,76,0.15);color:#8a6b1a;border:none;border-radius:6px;cursor:pointer;" onclick="viewDoc('${doc.id}')">
+        <span style="font-size:14px;">🔄</span> Refresh Ringkasan
+      </button>` : ''}
+    </div>
+  `;
+  document.getElementById('mdDetail').classList.add('open');
+
+  // Jika masih diproses, polling setiap 4 detik (max 15x = 1 menit)
+  if (isProcessing) {
+    let attempts = 0;
+    const PROCESSING_STATES = [
+      'Memproses ringkasan...', 'Tunggu ringkasan...',
+      'Sedang diproses...', '', null, undefined
+    ];
+
+    summaryPollTimer = setInterval(async () => {
+      attempts++;
+      if (attempts > 15) {
+        clearInterval(summaryPollTimer);
+        summaryPollTimer = null;
+        const box = document.getElementById('summaryBox');
+        if (box) box.innerHTML = '<span style="color:var(--muted);font-size:13px;">⚠️ Ringkasan belum selesai. Coba kembalilah beberapa detik lagi.</span>';
+        return;
+      }
+
+      // Bypass cache saat polling
+      Cache.clear();
+      const res = await callAPI('getDocuments', { filters: { search: doc.judul } }, Session.get()?.sessionId);
+      if (!res.success) return;
+
+      const updated = res.documents.find(d => d.id === id);
+      if (!updated) return;
+
+      const stillProcessing = PROCESSING_STATES.includes((updated.ringkasan || '').trim()) ||
+        (updated.ringkasan || '').startsWith('Error');
+
+      if (!stillProcessing) {
+        clearInterval(summaryPollTimer);
+        summaryPollTimer = null;
+        const box = document.getElementById('summaryBox');
+        if (box) {
+          box.style.transition = 'all 0.4s ease';
+          box.innerHTML = esc(updated.ringkasan);
+          box.style.background = 'rgba(201,168,76,0.08)';
+          setTimeout(() => { if(box) box.style.background = ''; }, 1500);
+        }
+        // Update cache lokal
+        const idx = allDocs.findIndex(d => d.id === id);
+        if (idx >= 0) allDocs[idx].ringkasan = updated.ringkasan;
+      }
+    }, 4000);
+  }
+}
+
+// Hentikan polling saat modal ditutup
+function closeModal(id) {
+  if (id === 'mdDetail' && summaryPollTimer) {
+    clearInterval(summaryPollTimer);
+    summaryPollTimer = null;
+  }
+  document.getElementById(id).classList.remove('open');
+}
+
+function editDoc(id) {
+  const doc = allDocs.find(d => d.id === id);
+  if (!doc) return;
+  editDocId = id;
+  document.getElementById('editJudul').value = doc.judul;
+  document.getElementById('editKat').value = doc.kategori;
+  document.getElementById('editTag').value = doc.tag || '';
+  document.getElementById('mdEdit').classList.add('open');
+}
+
+async function submitEdit() {
+  const res = await Documents.update(editDocId, {
+    judul: document.getElementById('editJudul').value,
+    kategori: document.getElementById('editKat').value,
+    tag: document.getElementById('editTag').value
+  });
+  if (res.success) { toast('Dokumen diperbarui', 'success'); closeModal('mdEdit'); loadDocs(); }
+  else toast(res.message, 'error');
+}
+
+async function delDoc(id) {
+  if (!confirm('Yakin hapus dokumen ini secara permanen dari arsip?')) return;
+  const res = await Documents.delete(id);
+  if (res.success) { toast('Dokumen dihapus', 'success'); loadDocs(); }
+  else toast(res.message, 'error');
+}
+
+// ===== UPLOAD COMPANION =====
+async function handleUpload() {
+  const file = document.getElementById('upFile').files[0];
+  const url = document.getElementById('upUrl').value.trim();
+  const judul = document.getElementById('upJudul').value.trim();
+  const kategori = document.getElementById('upKat').value;
+  const tag = document.getElementById('upTag').value.trim();
+
+  if (!judul || !kategori) { 
+    toast('Judul dan kategori wajib diisi', 'error'); 
+    return; 
+  }
+
+  if (!file && !url) {
+    toast('Pilih file PDF langsung ATAU masukkan Link Google Drive', 'error');
+    return;
+  }
+
+  if (file) {
+    if (file.size > 50 * 1024 * 1024) { 
+      toast('File terlalu besar (max 50MB)', 'error'); 
+      return; 
+    }
+
+    showUploadStatus('Proses unggah file ke server dan analisis instan via Gemini AI...', 'loading');
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64 = e.target.result.split(',')[1];
+      const res = await Documents.uploadFile(file.name, base64, judul, kategori, tag);
+
+      if (res.success) {
+        showUploadStatus('✅ Dokumen berhasil diunggah dan dirangkum otomatis!', 'success');
+        setTimeout(() => {
+          document.getElementById('upFile').value = '';
+          document.getElementById('upUrl').value = '';
+          document.getElementById('upJudul').value = '';
+          document.getElementById('upKat').value = '';
+          document.getElementById('upTag').value = '';
+          document.getElementById('upFileName').textContent = 'Pilih berkas PDF atau seret ke sini';
+          goTo('docs');
+          loadDocs();
+          showUploadStatus('', 'success');
+        }, 1500);
+      } else {
+        showUploadStatus('❌ Gagal: ' + res.message, 'error');
+      }
+    };
+    reader.readAsDataURL(file);
+  } else {
+    // Tautan Google Drive saja
+    showUploadStatus('Menghubungkan tautan Google Drive...', 'loading');
+    const docData = {
+      judul,
+      kategori,
+      tag,
+      fileUrl: url,
+      fileName: 'Link File Drive',
+      fileMimeType: 'application/octet-stream',
+      fileSize: 0
+    };
+    const res = await Documents.upload(docData);
+    if (res.success) {
+      showUploadStatus('✅ Dokumen Drive berhasil ditautkan!', 'success');
+      setTimeout(() => {
+        document.getElementById('upFile').value = '';
+        document.getElementById('upUrl').value = '';
+        document.getElementById('upJudul').value = '';
+        document.getElementById('upKat').value = '';
+        document.getElementById('upTag').value = '';
+        goTo('docs');
+        loadDocs();
+        showUploadStatus('', 'success');
+      }, 1500);
+    } else {
+      showUploadStatus('❌ Gagal menautkan: ' + res.message, 'error');
+    }
+  }
+}
+
+// Support alias legacy
+const handleUploadFile = handleUpload;
+
+function showUploadStatus(msg, type) {
+  const el = document.getElementById('upStatus');
+  if (!msg) {
+    el.innerHTML = '';
+    return;
+  }
+  el.innerHTML = `<div style="padding:14px;border-radius:6px;font-size:13px;margin-bottom:16px;box-shadow: 0 1px 3px rgba(0,0,0,0.05);${
+    type === 'loading' ? 'background:rgba(201,168,76,0.15);color:var(--ink);border-left: 3px solid var(--gold);' :
+    type === 'success' ? 'background:rgba(16,185,129,0.12);color:#065f46;border-left: 3px solid #10b981;' :
+    'background:rgba(220,38,38,0.12);color:#991b1b;border-left: 3px solid #dc2626;'
+  }"><span style="display:inline-block;margin-right:8px;">${
+    type === 'loading' ? '⏳' :
+    type === 'success' ? '✅' :
+    '❌'
+  }</span>${msg}</div>`;
+}
+
+// ===== USERS =====
+async function loadUsers() {
+  const res = await Users.getAll();
+  if (!res.success) { toast(res.message, 'error'); return; }
+  const roleBadge = { admin: 'badge-gold', era: 'badge-blue', operator: 'badge-green' };
+  document.getElementById('usersBody').innerHTML = res.users.map(u => `
+    <tr>
+      <td><strong>${u.username}</strong></td>
+      <td>${u.namaLengkap}</td>
+      <td><span class="badge ${roleBadge[u.peran] || 'badge-muted'}">${u.peran}</span></td>
+      <td><span class="badge badge-green">${u.status}</span></td>
+      <td style="font-size:12px;color:var(--muted)">${fmtDate(u.dibuat)}</td>
+      <td><button class="btn-xs btn-xs-del" onclick="delUser('${u.username}')">Hapus</button></td>
+    </tr>
+  `).join('');
+}
+
+function openAddUser() { document.getElementById('mdAddUser').classList.add('open'); }
+
+async function submitAddUser() {
+  const username = document.getElementById('newUsr').value.trim();
+  const password = document.getElementById('newPwd').value.trim();
+  const namaLengkap = document.getElementById('newName').value.trim();
+  const peran = document.getElementById('newRole').value;
+  if (!username || !namaLengkap) { toast('Username & nama wajib diisi', 'error'); return; }
+  const res = await Users.add(username, password, peran, namaLengkap);
+  if (res.success) {
+    toast(`Pengguna dibuat! Password: ${res.password}`, 'success');
+    closeModal('mdAddUser'); loadUsers();
+  } else toast(res.message, 'error');
+}
+
+async function delUser(username) {
+  if (username === session?.username) {
+    toast('Tidak bisa menghapus akun sendiri', 'error');
+    return;
+  }
+  if (!confirm('Hapus user ' + username + '?')) return;
+  const res = await Users.delete(username);
+  if (res.success) { toast('Pengguna dihapus', 'success'); loadUsers(); }
+  else toast(res.message, 'error');
+}
+
+// ===== LOGOUT =====
+async function handleLogout() {
+  await Auth.logout();
+  window.location.href = '/index.html';
+}
+
+// ===== UTILS =====
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric', hour:'numeric', minute:'numeric' });
+}
+
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+
+let toastTimer;
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+// ===== INIT: jalankan setelah DOM siap =====
+document.addEventListener('DOMContentLoaded', function () {
+  // Guard - redirect ke login jika belum auth
+  if (!requireAuth()) return;
+
+  // Ambil session
+  session = Session.get();
+  role = session?.peran;
+
+  // Set user info di topbar
+  document.getElementById('topUserName').textContent = session?.namaLengkap || session?.username || '—';
+  document.getElementById('topUserRole').textContent = (role || '').toUpperCase();
+
+  // Tampilkan nav sesuai peran
+  if (role === 'admin' || role === 'operator') {
+    document.getElementById('nav-upload').style.display = 'flex';
+    document.getElementById('btnUpload').style.display = 'inline-block';
+  }
+  if (role === 'admin') {
+    document.getElementById('nav-users').style.display = 'flex';
+  }
+
+  // Load data & pasang listener
+  loadDocs();
+  document.getElementById('searchInput').addEventListener('input', () => loadDocs());
+  document.getElementById('catFilter').addEventListener('change', () => loadDocs());
+});
+</script>
+</body>
+</html>
