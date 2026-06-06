@@ -6,7 +6,7 @@
 
 // Secara default, arahkan ke backend server Express lokal jika berjalan pada platform ini,
 // atau timpa dengan URL deployment Google Apps Script Anda jika dideploy mandiri di GAS.
-const GAS_API_URL = '/api';
+const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbx9qIISf9ePbSjCkaSZYUtEI_WyHg9vUjE5kOAdPNVMSiCOj1_4o7rcbTEd3FOjwFh6/exec';
 
 // ============================================
 // CACHE LOKAL - kurangi pemanggilan ke REST/GAS
